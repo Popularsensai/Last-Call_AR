@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Call AR — webcam bartending</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+:root{--neon:#ff3b7a;--teal:#2de2c5;--brass:#d9b25a;--cream:#fbefd6}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0506;overflow:hidden;color:var(--cream);
+  font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;-webkit-user-select:none;user-select:none}
+canvas#game{position:fixed;inset:0;display:block;touch-action:none;cursor:none}
+#cam{position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none}
+
+.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;z-index:10;overflow:auto;
+  background:radial-gradient(ellipse at 50% 15%,rgba(60,16,30,.78),rgba(8,3,5,.95) 70%);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.overlay.show{display:flex}
+.panel{width:min(980px,100%);margin:auto;text-align:center;padding:22px 26px 18px;border:1px solid rgba(217,178,90,.35);
+  border-radius:18px;background:linear-gradient(180deg,rgba(32,12,10,.82),rgba(14,6,6,.9));
+  box-shadow:0 20px 80px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.04)}
+.neon{font-family:'Bebas Neue',Impact,sans-serif;font-size:clamp(54px,9vw,104px);letter-spacing:.06em;line-height:.92;
+  color:#ffe9f1;text-shadow:0 0 6px #fff,0 0 14px var(--neon),0 0 32px var(--neon),0 0 64px var(--neon);animation:flick 6s infinite}
+.neon small{font-size:.5em;margin-left:.1em;color:#dffcf6;text-shadow:0 0 6px #fff,0 0 14px var(--teal),0 0 34px var(--teal)}
+.neon.sm{font-size:clamp(40px,6vw,70px)}
+@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.neon{animation:none}}
+.tag{font-size:21px;margin:8px 0 2px;color:#ffd9a8;letter-spacing:.02em}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0 12px}
+.card{text-align:left;padding:10px 13px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}
+.card b{display:block;font-family:'Bebas Neue',Impact,sans-serif;letter-spacing:.06em;font-size:21px;color:var(--brass);font-weight:400}
+.card span{font-size:16px;line-height:1.22;opacity:.92}
+.card i{font-style:normal;font-size:23px;margin-right:6px;vertical-align:-2px}
+.row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.btn{font-family:'Bebas Neue',Impact,sans-serif;font-size:25px;letter-spacing:.07em;padding:10px 26px;border-radius:12px;
+  border:1px solid rgba(217,178,90,.6);color:var(--cream);background:linear-gradient(180deg,#3a1f17,#22110c);cursor:pointer;transition:.15s}
+.btn:hover,.btn:focus-visible{transform:translateY(-1px);box-shadow:0 0 22px rgba(255,59,122,.4);outline:none}
+.btn.primary{background:linear-gradient(180deg,#ff4f86,#c91e57);border-color:#ff9ab9;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.btn:disabled{opacity:.5;cursor:wait}
+.status{min-height:24px;font-size:18px;color:#ffd6a0}
+.status.err{color:#ff9a9a}
+.foot{font-size:15px;opacity:.68;margin:8px 0 0;line-height:1.3}
+.reach{font-size:17px;color:#ffd9a8}
+.reach input{vertical-align:middle;width:170px;accent-color:#ff3b7a}
+kbd{font-family:inherit;border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:0 6px;background:rgba(255,255,255,.08)}
+
+.grade{display:inline-grid;place-items:center;width:150px;height:150px;border-radius:50%;margin:8px auto;
+  font-family:'Bebas Neue',Impact,sans-serif;font-size:110px;line-height:1;border:6px double currentColor;transform:rotate(-7deg);
+  text-shadow:0 0 18px currentColor}
+.gtitle{font-size:24px;letter-spacing:.06em;color:#ffd9a8;margin-bottom:4px}
+.stars{margin:2px 0 10px}
+.st{font-size:46px;margin:0 2px;background:linear-gradient(90deg,#ffc83d var(--f),#4a3a2a var(--f));
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 12px}
+.stat{padding:10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}
+.stat b{display:block;font-family:'Bebas Neue',Impact,sans-serif;font-size:34px;font-weight:400;color:#ffe3a6;letter-spacing:.04em}
+.stat span{font-size:15px;opacity:.75}
+.check{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(720px,calc(100% - 24px));z-index:11;display:none;
+  padding:14px 18px 12px;border-radius:16px;border:1px solid rgba(217,178,90,.45);background:rgba(14,6,6,.88);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 14px 60px rgba(0,0,0,.6);text-align:left}
+.check.show{display:block}
+.chk-title{font-family:'Bebas Neue',Impact,sans-serif;font-size:26px;letter-spacing:.06em;color:var(--brass)}
+.chk-row{display:flex;align-items:center;gap:10px;font-size:18px;margin:3px 0}
+.dot{width:12px;height:12px;border-radius:50%;background:#7a6a60;flex:none;box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+.dot.ok{background:#5ae08a;box-shadow:0 0 10px #5ae08a}.dot.bad{background:#ff6a5c;box-shadow:0 0 10px #ff6a5c}.dot.wait{background:#ffd27a}
+.chk-hint{min-height:22px;margin:6px 0 2px;font-size:16px;color:#ffd6a0;line-height:1.25}
+.chk-ctl{display:flex;gap:14px;flex-wrap:wrap;font-size:16px;margin:6px 0}
+.chk-ctl select{font:inherit;background:#22110c;color:var(--cream);border:1px solid rgba(217,178,90,.5);border-radius:8px;padding:3px 6px;max-width:260px}
+.check .row{justify-content:flex-start;margin:8px 0 2px}
+.check .btn{font-size:22px;padding:8px 22px}
+@media (max-width:760px){.how{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.how{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted></video>
+<canvas id="game"></canvas>
+
+<!-- START -->
+<div id="start" class="overlay show">
+  <div class="panel">
+    <div class="neon">LAST CALL<small>AR</small></div>
+    <p class="tag">Tend the bar. Shake it. Stir it. Survive the night shift.</p>
+    <div class="how">
+      <div class="card"><b><i>🤏</i>Grab</b><span>Pinch thumb and index finger (or make a fist) over a bottle, glass or tool. Open your hand to let go.</span></div>
+      <div class="card"><b><i>🍾</i>Pour</b><span>Tip a bottle over the mixing glass. About a second of tipping adds one part (watch the ring). Match the menu board.</span></div>
+      <div class="card"><b><i>🥶</i>Shake</b><span>Grab the mixing glass and shake it back and forth, or set up a <em>real bottle</em> (🧴) and shake that. Keep the needle in the green; the ring fills as it mixes.</span></div>
+      <div class="card"><b><i>🥄</i>Stir</b><span>Stirred drinks: take the bar spoon and stir smooth circles over the mixing glass.</span></div>
+      <div class="card"><b><i>🍸</i>Serve</b><span>Carry the mixing glass into the dashed zone over the cocktail glass to pour. Then carry the drink to a customer and hold it over them (or let go).</span></div>
+      <div class="card"><b><i>🚨</i>Trouble</b><span>Creeps and rowdy drunks: pinch <em>Call Bouncer</em>, or grab the bar towel and <em>flick</em> it at them: a red target locks on, and a fast flick throws it for you. Don't hit regulars!</span></div>
+    </div>
+    <div class="row">
+      <button id="btnCam" class="btn primary">📷 Play with webcam</button>
+      <button id="btnMouse" class="btn">🖱 Play with mouse</button>
+    </div>
+    <div class="row reach"><label>Reach&nbsp;&nbsp;<input type="range" id="reach" min="100" max="170" value="125"> <span id="reachVal">1.25×</span></label>
+      <span style="opacity:.7">(higher = smaller hand movements cover the whole bar)</span></div>
+    <div class="row reach"><label><input type="checkbox" id="oneHand" checked> Single-hand mode (recommended: no ghost second hand)</label></div>
+    <div id="envNote" class="status err"></div>
+    <div id="status" class="status"></div>
+    <p class="foot">Stand about an arm's length from the camera with good light so both hands are visible. Stars: 5★ = exact recipe, well mixed. Wrong drink = 1★.<br>
+      Keys: <kbd>B</kbd> bouncer · <kbd>D</kbd> dump · <kbd>M</kbd> mute · <kbd>P</kbd> pause</p>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div id="pauseOv" class="overlay">
+  <div class="panel" style="max-width:520px">
+    <div class="neon sm">PAUSED</div>
+    <div class="row reach"><label>Reach&nbsp;&nbsp;<input type="range" id="reach2" min="100" max="170" value="125"> <span id="reachVal2">1.25×</span></label></div>
+    <div class="row"><button id="btnResume" class="btn primary">Resume</button><button id="btnQuit" class="btn">Quit to menu</button></div>
+  </div>
+</div>
+
+<!-- TRACKING CHECK (shown after the camera starts, before the shift) -->
+<div id="check" class="check">
+  <div class="chk-title">Tracking check</div>
+  <div class="chk-row"><span class="dot wait" id="dCam"></span><span id="chkCam">Camera…</span></div>
+  <div class="chk-row"><span class="dot wait" id="dTrk"></span><span id="chkTrk">Hand tracker…</span></div>
+  <div class="chk-row"><span class="dot wait" id="dHand"></span><span id="chkHand">Hold up a hand, palm toward the camera</span></div>
+  <div class="chk-row"><span class="dot" id="dBot"></span><span id="chkBot">Real bottle: not set up (optional: shake your own bottle to mix)</span></div>
+  <div class="chk-hint" id="chkHint"></div>
+  <div class="chk-ctl">
+    <label>Camera <select id="camSel"></select></label>
+    <label>Tracker <select id="engSel"><option value="auto">Auto (recommended)</option><option value="cpu">CPU only</option><option value="legacy">Classic MediaPipe</option></select></label>
+  </div>
+  <div class="row"><button id="btnStart2" class="btn primary">▶ Start shift</button><button id="btnBottle" class="btn">🧴 Real bottle</button><button id="btnBack" class="btn">Back</button></div>
+</div>
+
+<!-- END -->
+<div id="end" class="overlay">
+  <div class="panel" style="max-width:760px">
+    <div class="neon sm">LAST CALL!</div>
+    <div class="gtitle" id="gTitle">Service grade</div>
+    <div id="gLetter" class="grade">A</div>
+    <div class="stars" id="finalStars"></div>
+    <div class="stats">
+      <div class="stat"><b id="stTips">$0</b><span>Tips earned</span></div>
+      <div class="stat"><b id="stSat">0%</b><span>Customer satisfaction</span></div>
+      <div class="stat"><b id="stServed">0</b><span>Drinks served</span></div>
+      <div class="stat"><b id="stWalk">0</b><span>Walk-outs</span></div>
+      <div class="stat"><b id="stTrouble">0</b><span>Troublemakers removed</span></div>
+      <div class="stat"><b id="stBest">—</b><span>Best drink</span></div>
+    </div>
+    <div class="status" id="stRecord"></div>
+    <div class="row"><button id="btnAgain" class="btn primary">↻ Another shift</button><button id="btnMenu" class="btn">Menu</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   CONFIG — tweak these to tune the feel
+===================================================================== */
+const W = 1280, H = 720;              // logical canvas; scaled to fit the window
+const SHIFT_LEN = 300;                // seconds per shift (9 PM → 2 AM on the clock)
+const LAST_CALL_AT = 255;             // no new customers after this
+const POUR_UNIT = 0.9;                // seconds of tipping a bottle = 1 part
+const POUR_OUT_TIME = 1.6;            // seconds to pour the mixing glass into the cocktail glass
+const PATIENCE = { regular: 115, vague: 125, rude: 80, drunk: 90 };   // seconds a customer waits
+const EARLY_GRACE = 90;               // first N seconds of the shift: customers are extra patient (x1.3)
+const VESSEL_CAP = 8;                 // max parts in the mixing glass
+const THROW = { min: 5.5, auto: 8.5, weak: 3.0, respawn: 0.9 };   // towel speeds in palm-lengths/second: throw / auto-throw / "flick harder" hint
+const BOUNCER_CD = 20;                // bouncer cooldown (s)
+const SHAKE = { lo: 0.16, hi: 0.72, max: 14, need: 2.8 };    // meter = shake speed (palm-lengths/s) / max
+const STIR  = { lo: 0.14, hi: 0.80, max: 16, need: 3.5 };    // meter = stir speed (rad/s) / max
+const SEATS = [190, 450, 710];
+const MODEL_COMPLEXITY = 1;           // 0 = faster/less accurate hand model, 1 = better
+const MP_VERSION = '0.4.1675469240';
+const F_DISP = '"Bebas Neue", Impact, "Arial Narrow", sans-serif';
+const F_BODY = '"Barlow Condensed", "Arial Narrow", Arial, sans-serif';
+
+/* =====================================================================
+   SMALL HELPERS
+===================================================================== */
+const $ = id => document.getElementById(id);
+const cv = $('game'), ctx = cv.getContext('2d');
+const video = $('cam');
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+const clock = () => performance.now() / 1000;
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hex2rgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+const rgb = (a, al = 1) => `rgba(${a[0] | 0},${a[1] | 0},${a[2] | 0},${al})`;
+const mixRGB = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const shade = (hex, f) => { const c = hex2rgb(hex); return rgb(c.map(v => clamp(v * f, 0, 255))); };
+const lum = hex => { const c = hex2rgb(hex); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; };
+function blendColor(parts) {
+  let r = 0, g = 0, b = 0, tot = 0;
+  for (const k in parts) { const c = hex2rgb(INGR[k].color), n = parts[k]; r += c[0] * n; g += c[1] * n; b += c[2] * n; tot += n; }
+  return tot ? [r / tot, g / tot, b / tot] : [200, 200, 200];
+}
+
+/* =====================================================================
+   GAME DATA
+===================================================================== */
+const INGR = {
+  vodka:    { name: 'Vodka',      short: 'VODKA', color: '#e4f1ff', glass: '#9fc2d6', label: '#e9edf2', cap: '#c9ced6', fat: false },
+  gin:      { name: 'Gin',        short: 'GIN',   color: '#d3f0e3', glass: '#5fae92', label: '#1f6a55', cap: '#cbd3cf', fat: false },
+  rum:      { name: 'Rum',        short: 'RUM',   color: '#f2e4bf', glass: '#b9a374', label: '#8d4a22', cap: '#5b3a22', fat: false },
+  tequila:  { name: 'Tequila',    short: 'TEQ',   color: '#f4e8a6', glass: '#c9b95e', label: '#2e7d4f', cap: '#2b2b2b', fat: false },
+  bourbon:  { name: 'Bourbon',    short: 'BRBN',  color: '#c2701f', glass: '#6b3a12', label: '#e6c27a', cap: '#1f1f1f', fat: false },
+  triple:   { name: 'Triple Sec', short: 'T.SEC', color: '#ffae2b', glass: '#b86f12', label: '#fff0c4', cap: '#d87a1c', fat: true },
+  lime:     { name: 'Lime',       short: 'LIME',  color: '#b9ec4e', glass: '#4f8a1b', label: '#e9ffb5', cap: '#3f7a14', fat: true },
+  cran:     { name: 'Cranberry',  short: 'CRAN',  color: '#d0204a', glass: '#6a0e29', label: '#ffd0dc', cap: '#4a0a1c', fat: true },
+  soda:     { name: 'Soda',       short: 'SODA',  color: '#d6f3ff', glass: '#4f8fb0', label: '#e3f6ff', cap: '#8aa3b0', fat: true },
+  vermouth: { name: 'Vermouth',   short: 'VERM',  color: '#a8283a', glass: '#5e1420', label: '#f0d9a0', cap: '#b5944a', fat: false },
+};
+const RECIPES = [
+  { id: 'margarita',   name: 'Margarita',    parts: { tequila: 2, triple: 1, lime: 1 },            method: 'shake', tags: 'sour · tequila' },
+  { id: 'cosmo',       name: 'Cosmopolitan', parts: { vodka: 1, triple: 1, cran: 1, lime: 1 },     method: 'shake', tags: 'sweet · red' },
+  { id: 'daiquiri',    name: 'Daiquiri',     parts: { rum: 2, lime: 1 },                           method: 'shake', tags: 'sour · rum' },
+  { id: 'whiskeysour', name: 'Whiskey Sour', parts: { bourbon: 2, lime: 1 },                       method: 'shake', tags: 'sour · whiskey' },
+  { id: 'manhattan',   name: 'Manhattan',    parts: { bourbon: 2, vermouth: 1 },                   method: 'stir',  tags: 'strong · classic' },
+  { id: 'martini',     name: 'Martini',      parts: { gin: 2, vermouth: 1 },                       method: 'stir',  tags: 'strong · classic' },
+  { id: 'rickey',      name: 'Gin Rickey',   parts: { gin: 2, lime: 1, soda: 1 },                  method: 'stir',  tags: 'fizzy · light' },
+  { id: 'capecod',     name: 'Cape Cod',     parts: { vodka: 1, cran: 2 },                         method: 'stir',  tags: 'sweet · red' },
+];
+const VAGUE = [
+  { t: 'Something red and fruity... surprise me.',               accept: ['cosmo', 'capecod'] },
+  { t: 'Gimme something sour with tequila, you know the one.',   accept: ['margarita'] },
+  { t: "Something strong with whiskey. Shaken or stirred, I don't care.", accept: ['manhattan', 'whiskeysour'] },
+  { t: 'Something light, fizzy and gin-y?',                      accept: ['rickey'] },
+  { t: 'Citrusy. Rum. Cold. Go.',                                accept: ['daiquiri'] },
+  { t: 'Surprise me. Anything classic and stirred.',             accept: ['manhattan', 'martini'] },
+  { t: "Vodka. Sweet. Don't ask questions.",                     accept: ['cosmo', 'capecod'] },
+  { t: "Something sour. I'm not picky... unless it's wrong.",    accept: ['margarita', 'daiquiri', 'whiskeysour'] },
+];
+const CREEP_LINES = [
+  'Hey gorgeous, come here often?', "Don't you get lonely back there?", "C'mere, I wanna tell you a secret...",
+  'Lemme buy YOU a drink, sweetheart.', "What's a bartender like you doing single?",
+];
+const REACTIONS = {
+  5: ["Now THAT'S a drink!", 'Perfection. Keep the change.', "You've done this before, haven't you?"],
+  4: ['Mmm, nicely done.', "Solid. I'll be back.", 'Not bad at all!'],
+  3: ["It's... fine.", 'Could be better.', 'Eh. It is wet, at least.'],
+  2: ['Ugh. Weak.', 'Is it supposed to taste like that?', 'Meh.'],
+  1: ["That is NOT what I ordered!", 'Are you trying to poison me?', 'Ew. Never again.'],
+};
+const SKINS = ['#f1c9a5', '#e0ac82', '#c68863', '#a86a45', '#7a4a2e', '#f6d7b8'];
+const HAIRS = ['#2a1a10', '#5a3a1a', '#1a1a1a', '#8a5a2a', '#c9a05a', '#6a2a2a', '#9a9a9a'];
+const SHIRTS = ['#3f6fb5', '#b5493f', '#4b9a6a', '#8a5ab5', '#d49a2a', '#2f8f9a', '#c0587a', '#5a6a7a'];
+
+/* =====================================================================
+   TEXTURES (all procedural — no image files needed)
+===================================================================== */
+function makeWoodPattern(base, grain, seed) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+  const r = mulberry32(seed);
+  for (let i = 0; i < 80; i++) {
+    g.strokeStyle = grain; g.globalAlpha = 0.05 + r() * 0.14; g.lineWidth = 0.5 + r() * 2;
+    const y = r() * 256; g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= 256; x += 32) g.lineTo(x, y + Math.sin(x * 0.03 + i) * 3 + (r() - 0.5) * 2);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  return ctx.createPattern(c, 'repeat');
+}
+const PAT = { dark: makeWoodPattern('#2b160c', '#6b3a1c', 3), light: makeWoodPattern('#6b3b1d', '#b0702f', 9) };
+
+const roomCanvas = document.createElement('canvas'); roomCanvas.width = W; roomCanvas.height = H;
+(function () {
+  const g = roomCanvas.getContext('2d'), r = mulberry32(11);
+  g.fillStyle = '#1c0f0d'; g.fillRect(0, 0, W, H);
+  const bh = 26, bw = 64;
+  for (let y = 0, row = 0; y < H; y += bh, row++)
+    for (let x = -(row % 2) * bw / 2; x < W; x += bw) {
+      const l = 22 + r() * 14; g.fillStyle = `rgb(${l + 34},${l + 14},${l + 10})`; g.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3);
+    }
+  const gr = g.createRadialGradient(W / 2, H * 0.4, 100, W / 2, H * 0.4, W * 0.75);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.78)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+})();
+
+/* =====================================================================
+   INPUT: HANDS (MediaPipe) + MOUSE
+===================================================================== */
+let reach = 1.25, camOn = false, handsSolution = null, pumping = false, busy = false, inputMode = 'mouse';
+const HAND_LINES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+function makeHand(id) {
+  return { id, active: false, show: false, lastSeen: 0, tx: 0, ty: 0, x: 0, y: 0, ax: 0, ay: 0, gx: 0, gy: 0, px: 0, py: 0, vx: 0, vy: 0, palm: 110,
+    grabRaw: false, grab: false, prevGrab: false, grabOnT: 0, grabOffT: 0, pinchOn: false, fistOn: false, item: null, pts: null, hist: [],
+    dwellT: 0, dwellDone: false, hoverUI: null };
+}
+const hands = [makeHand(0), makeHand(1)];
+const mouseHand = makeHand('mouse');
+const allHandsArr = [hands[0], hands[1], mouseHand];
+
+let maxHands = 1, pendingNew = null;
+function applyHandMode() {
+  const el = $('oneHand'); maxHands = el && el.checked ? 1 : 2;
+  if (engine && engine.setHands) engine.setHands(maxHands);
+}
+
+/* normalised camera coords (0..1, un-mirrored) <-> game coords (mirrored, cropped like the video, plus the Reach zoom) */
+function mapNorm(nx, ny) {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s, ox = (W - dw) / 2, oy = (H - dh) / 2;
+  const x = ox + (1 - nx) * dw, y = oy + ny * dh;
+  return { x: W / 2 + (x - W / 2) * reach, y: H / 2 + (y - H / 2) * reach };
+}
+function unmapLogical(x, y) {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s, ox = (W - dw) / 2, oy = (H - dh) / 2;
+  const x1 = W / 2 + (x - W / 2) / reach, y1 = H / 2 + (y - H / 2) / reach;
+  return { nx: 1 - (x1 - ox) / dw, ny: (y1 - oy) / dh };
+}
+function analyze(lm) {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const pts = lm.map(p => mapNorm(p.x, p.y));
+  const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * vw, (lm[a].y - lm[b].y) * vh);
+  const scale = Math.max(d(0, 9), 1);
+  const pinch = d(4, 8) / scale;
+  const curl = (d(8, 0) + d(12, 0) + d(16, 0) + d(20, 0)) / 4 / scale;
+  const palm = Math.hypot(pts[0].x - pts[9].x, pts[0].y - pts[9].y);
+  const pc = [0, 5, 9, 13, 17];
+  return { pts, x: clamp((pts[4].x + pts[8].x) / 2, 0, W), y: clamp((pts[4].y + pts[8].y) / 2, 0, H), pinch, curl, palm,
+    cx: pc.reduce((a, i) => a + pts[i].x, 0) / 5, cy: pc.reduce((a, i) => a + pts[i].y, 0) / 5 };
+}
+function applyDet(h, d) {
+  h.lastSeen = clock(); h.tx = d.x; h.ty = d.y; h.pts = d.pts; h.show = true; h.palm = lerp(h.palm || d.palm, d.palm, 0.25);
+  if (!h.pinchOn && d.pinch < 0.30) h.pinchOn = true; else if (h.pinchOn && d.pinch > 0.48) h.pinchOn = false;
+  if (!h.fistOn && d.curl < 1.30) h.fistOn = true; else if (h.fistOn && d.curl > 1.55) h.fistOn = false;
+  h.grabRaw = h.pinchOn || h.fistOn;
+}
+function activateHand(h, d) {
+  h.active = true; h.x = h.px = h.ax = h.gx = d.x; h.y = h.py = h.ay = h.gy = d.y; h.vx = h.vy = 0; h.hist = [];
+  h.grab = false; h.grabOnT = h.grabOffT = 0; h.pinchOn = h.fistOn = false; h.palm = d.palm; applyDet(h, d);
+}
+
+/* MediaPipe sometimes reports one hand twice, or loses a fast-moving hand for a frame.
+   1) drop duplicate detections that sit on top of each other
+   2) never let a single detection create a second hand; extra hands must persist for several frames */
+function onHandResults(res) {
+  const lms = res.multiHandLandmarks || [], sc = res.multiHandedness || [];
+  const dets = lms.map((lm, i) => Object.assign(analyze(lm), { score: (sc[i] && sc[i].score) || 0.5 })).sort((a, b) => b.score - a.score);
+  const kept = [];
+  for (const d of dets) if (!kept.some(k => Math.hypot(k.cx - d.cx, k.cy - d.cy) < Math.max(k.palm, d.palm) * 0.75)) kept.push(d);
+  if (kept.length > maxHands) kept.length = maxHands;
+  const act = hands.filter(h => h.active), pairs = [];
+  for (const d of kept) for (const h of act) pairs.push({ d, h, dist: Math.hypot(h.tx - d.x, h.ty - d.y) });
+  pairs.sort((a, b) => a.dist - b.dist);
+  const usedD = new Set(), usedH = new Set(), jump = kept.length <= act.length ? 1e9 : 380;
+  for (const p of pairs) { if (usedD.has(p.d) || usedH.has(p.h) || p.dist > jump) continue; usedD.add(p.d); usedH.add(p.h); applyDet(p.h, p.d); }
+  let leftover = false;
+  for (const d of kept) {
+    if (usedD.has(d)) continue;
+    const free = hands.find(h => !h.active && !usedH.has(h)); if (!free) continue;
+    if (!act.length && !usedH.size) { activateHand(free, d); usedH.add(free); continue; }     // the first hand shows up instantly
+    leftover = true;
+    if (pendingNew && Math.hypot(pendingNew.x - d.x, pendingNew.y - d.y) < 220) { pendingNew.n++; pendingNew.x = d.x; pendingNew.y = d.y; }
+    else pendingNew = { x: d.x, y: d.y, n: 1 };
+    if (pendingNew.n >= 6) { activateHand(free, d); usedH.add(free); pendingNew = null; }
+  }
+  if (!leftover) pendingNew = null;
+}
+
+
+/* =====================================================================
+   CAMERA + HAND-TRACKER ENGINES
+   1) MediaPipe Tasks HandLandmarker (GPU, falling back to CPU; CPU first on Safari)
+   2) Classic MediaPipe Hands as a fallback
+   Each frame is only processed once, errors are caught, and a stuck tracker can't freeze the loop.
+===================================================================== */
+const TASKS_VER = '0.10.21';
+const TASKS_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VER}/vision_bundle.mjs`;
+const TASKS_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VER}/wasm`;
+const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+const UA = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+const IS_SAFARI = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(UA);
+let engine = null, stream = null, lastVT = -1, lastTs = 0, pumpBusy = false, errStreak = 0, recovering = false;
+const diag = { engine: '', delegate: '', camName: '', camRes: '', fps: 0, ms: 0, prevT: 0, errors: 0, lastErr: '', lastHandsT: 0 };
+
+function camErrorMessage(e) {
+  const n = e && e.name;
+  if (n === 'NotAllowedError' || n === 'SecurityError') return 'Camera blocked. Allow it in the browser (address bar / Safari ▸ Settings ▸ Websites ▸ Camera) AND in macOS System Settings ▸ Privacy & Security ▸ Camera.';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'No camera found.';
+  if (n === 'NotReadableError' || n === 'AbortError') return 'The camera is busy. Quit other apps using it (FaceTime, Zoom, Photo Booth, another tab) and try again.';
+  return (e && e.message) ? e.message : 'Could not start the camera.';
+}
+async function openStream(deviceId) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+    throw new Error('The camera is only available on http://localhost or https — not from a plain file in Safari. Use the launcher script, or open the file in Chrome.');
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  const base = { width: { ideal: 1280 }, height: { ideal: 720 } };
+  const c = { video: deviceId ? Object.assign({ deviceId: { exact: deviceId } }, base) : Object.assign({ facingMode: 'user' }, base), audio: false };
+  try { stream = await navigator.mediaDevices.getUserMedia(c); }
+  catch (e) { if (e && e.name === 'OverconstrainedError') stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); else throw e; }
+  video.srcObject = stream; await video.play();
+  if (!video.videoWidth) await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }));
+  const tr = stream.getVideoTracks()[0];
+  camOn = true; lastVT = -1; diag.camRes = `${video.videoWidth}×${video.videoHeight}`; diag.camName = (tr && tr.label) || 'Camera'; diag.lastHandsT = clock();
+}
+async function fillCameraList() {
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'), sel = $('camSel');
+    const cur = stream && stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId;
+    sel.innerHTML = '';
+    devs.forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('Camera ' + (i + 1)); if (d.deviceId === cur) o.selected = true; sel.appendChild(o); });
+  } catch (e) { /* not essential */ }
+}
+
+async function loadTasks(forceCpu) {
+  const mod = await import(TASKS_URL);
+  const fileset = await mod.FilesetResolver.forVisionTasks(TASKS_WASM);
+  const make = delegate => mod.HandLandmarker.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: MODEL_URL, delegate }, runningMode: 'VIDEO', numHands: maxHands,
+    minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+  const order = forceCpu ? ['CPU'] : (IS_SAFARI ? ['CPU', 'GPU'] : ['GPU', 'CPU']);
+  let lm = null, used = '', lastE = null;
+  for (const d of order) { try { lm = await make(d); used = d; break; } catch (e) { lastE = e; console.warn('HandLandmarker', d, 'failed:', e); } }
+  if (!lm) throw lastE || new Error('HandLandmarker failed to start');
+  diag.delegate = used;
+  return {
+    id: 'tasks', name: 'MediaPipe HandLandmarker',
+    detect(v) {
+      let ts = performance.now(); if (ts <= lastTs) ts = lastTs + 1; lastTs = ts;
+      const r = lm.detectForVideo(v, ts);
+      return { multiHandLandmarks: r.landmarks || [], multiHandedness: (r.handedness || r.handednesses || []).map(a => (a && a[0]) || { score: 0.5 }) };
+    },
+    setHands(n) { try { lm.setOptions({ numHands: n }); } catch (e) { /* ignore */ } },
+    async recover() { if (used !== 'GPU') return false; lm = await make('CPU'); used = 'CPU'; diag.delegate = 'CPU'; return true; },
+    close() { try { lm.close(); } catch (e) { /* ignore */ } },
+  };
+}
+function loadScript(src) {
+  return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.crossOrigin = 'anonymous'; el.onload = res; el.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(el); });
+}
+async function loadLegacy() {
+  if (typeof Hands === 'undefined') await loadScript(`https://cdn.jsdelivr.net/npm/@mediapipe/hands@${MP_VERSION}/hands.js`);
+  const h = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${MP_VERSION}/${f}` });
+  h.setOptions({ maxNumHands: maxHands, modelComplexity: MODEL_COMPLEXITY, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  let latest = null; h.onResults(r => { latest = r; });
+  await h.initialize(); diag.delegate = 'WebGL';
+  return {
+    id: 'legacy', name: 'Classic MediaPipe Hands',
+    async detect(v) {
+      latest = null;
+      await Promise.race([h.send({ image: v }), new Promise((_, rej) => setTimeout(() => rej(new Error('tracker timeout')), 4000))]);
+      return latest ? { multiHandLandmarks: latest.multiHandLandmarks || [], multiHandedness: latest.multiHandedness || [] } : null;
+    },
+    setHands(n) { try { h.setOptions({ maxNumHands: n }); } catch (e) { /* ignore */ } },
+    close() { try { h.close(); } catch (e) { /* ignore */ } },
+  };
+}
+async function loadEngine(id) {
+  const old = engine;      // keep the current tracker running until a replacement is ready
+  const tries = id === 'legacy' ? ['legacy'] : id === 'cpu' ? ['cpu', 'legacy'] : ['auto', 'legacy'];
+  let lastE = null;
+  for (const t of tries) {
+    try {
+      const e = t === 'legacy' ? await loadLegacy() : await loadTasks(t === 'cpu');
+      engine = e; if (old && old !== e && old.close) old.close();
+      diag.engine = e.name; errStreak = 0; return;
+    } catch (e) { lastE = e; console.warn('tracker', t, 'failed:', e); }
+  }
+  throw new Error('Hand tracking could not start (' + ((lastE && lastE.message) || 'unknown error') + '). Check your internet connection — the tracker downloads on first use.');
+}
+async function startCamera() {
+  setStatus('Requesting camera… (click Allow if asked)');
+  await openStream();
+  setStatus('Loading the hand tracker… (first time takes several seconds)');
+  await loadEngine($('engSel').value || 'auto');
+  pumping = true; pump(); fillCameraList();
+}
+function pump() {
+  if (!pumping) return;
+  requestAnimationFrame(pump);
+  if (BT.locked && video.readyState >= 2 && video.currentTime !== BT.lastVT) { BT.lastVT = video.currentTime; try { bottleStep(); } catch (e) { diag.lastErr = 'bottle: ' + (e && e.message); } }
+  if (BT.setup && BT.det && !BT.detBusy && video.readyState >= 2 && clock() - BT.lastDetT > 0.25) { BT.lastDetT = clock(); setupDetect(); }
+  if (!engine || pumpBusy || video.readyState < 2 || video.currentTime === lastVT) return;
+  lastVT = video.currentTime; pumpBusy = true;
+  const t0 = performance.now();
+  Promise.resolve().then(() => engine.detect(video)).then(r => {
+    errStreak = 0;
+    if (r) { onHandResults(r); if (r.multiHandLandmarks.length) diag.lastHandsT = clock(); }
+    const t1 = performance.now(); diag.ms += ((t1 - t0) - diag.ms) * 0.1;
+    if (diag.prevT) diag.fps += (1000 / Math.max(1, t1 - diag.prevT) - diag.fps) * 0.1; diag.prevT = t1;
+  }).catch(async e => {
+    errStreak++; diag.errors++; diag.lastErr = String((e && e.message) || e); console.warn(e);
+    if (errStreak >= 4 && !recovering) {
+      recovering = true;
+      try { if (!(engine && engine.recover && await engine.recover()) && (!engine || engine.id !== 'legacy')) await loadEngine('legacy'); errStreak = 0; }
+      catch (e2) { diag.lastErr = String((e2 && e2.message) || e2); }
+      recovering = false;
+    }
+  }).then(() => { pumpBusy = false; });
+}
+
+/* =====================================================================
+   REAL-BOTTLE TRACKING
+   Point the webcam at a real bottle (water bottle, shaker...) and shake it: its motion drives the same
+   finesse meter as shaking the on-screen mixing glass.
+   - Lock-on: auto-detect (MediaPipe object detector, "bottle") or drag a box around it.
+   - Tracking: a small template tracker on a 192px greyscale copy of the video (sum-of-absolute-differences
+     with sub-pixel refinement, slow template update, global re-acquire if the bottle leaves and returns).
+     Runs every camera frame and is tolerant of motion blur, unlike a detector.
+   Only translation is tracked, so shake it up/down or side to side (pure twisting is not picked up).
+===================================================================== */
+const OBJ_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
+const BT = { aw: 192, ah: 108, locked: false, setup: false, st: null, cv: null, g: null, gray: null, lastVT: -1, reTick: 0,
+  conf: 0, lost: 0, lastOk: 0, tracking: false, x: 640, y: 360, sx: 640, sy: 360, hx: 640, hy: 360, dx: 0, dy: 0, box: null,
+  src: { ax: 640, ay: 360, palm: 110, minAmp: 22 },
+  det: null, detBusy: false, detTs: 0, detErr: '', loading: false, lastDetT: 0, cand: null, candT: 0, sel: null, fromCheck: false };
+
+/* --- pure tracker core (greyscale arrays; no DOM) --- */
+function btExtract(g, aw, x, y, w, h) { const o = new Float32Array(w * h); for (let j = 0; j < h; j++) { const r = (y + j) * aw + x; for (let i = 0; i < w; i++) o[j * w + i] = g[r + i]; } return o; }
+function btSAD(g, aw, tpl, w, h, px, py, step) {
+  let s = 0, n = 0;
+  for (let j = 0; j < h; j += step) { const r = (py + j) * aw + px, t = j * w; for (let i = 0; i < w; i += step) { s += Math.abs(g[r + i] - tpl[t + i]); n++; } }
+  return s / n;
+}
+function btMakeState(gray, aw, ah, x, y, w, h) { return { aw, ah, x, y, w, h, fx: x, fy: y, tpl: btExtract(gray, aw, x, y, w, h), R: 12, conf: 1, sad: 0, lost: 0 }; }
+function btTrack(st, gray) {
+  const { aw, ah, w, h, tpl, R } = st;
+  const x0 = Math.max(0, st.x - R), x1 = Math.min(aw - w, st.x + R), y0 = Math.max(0, st.y - R), y1 = Math.min(ah - h, st.y + R);
+  let best = Infinity, bx = st.x, by = st.y, sum = 0, cnt = 0;
+  for (let y = y0; y <= y1; y += 2) for (let x = x0; x <= x1; x += 2) { const s = btSAD(gray, aw, tpl, w, h, x, y, 2); sum += s; cnt++; if (s < best) { best = s; bx = x; by = y; } }
+  const mean = cnt ? sum / cnt : 0;
+  let rb = Infinity, rx = bx, ry = by;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = bx + dx, y = by + dy; if (x < 0 || y < 0 || x > aw - w || y > ah - h) continue;
+    const s = btSAD(gray, aw, tpl, w, h, x, y, 1); if (s < rb) { rb = s; rx = x; ry = y; }
+  }
+  const at = (x, y) => (x < 0 || y < 0 || x > aw - w || y > ah - h) ? NaN : btSAD(gray, aw, tpl, w, h, x, y, 1);
+  const par = (a, b, c) => { if (!isFinite(a) || !isFinite(c)) return 0; const d = a - 2 * b + c; return d > 1e-6 ? clamp(0.5 * (a - c) / d, -0.5, 0.5) : 0; };
+  const fx = rx + par(at(rx - 1, ry), rb, at(rx + 1, ry)), fy = ry + par(at(rx, ry - 1), rb, at(rx, ry + 1));
+  const conf = mean > 1e-6 ? clamp(1 - rb / mean, 0, 1) : 0, ok = conf > 0.25 && rb < 55;
+  st.conf = conf; st.sad = rb;
+  if (ok) {
+    st.x = rx; st.y = ry; st.fx = fx; st.fy = fy; st.lost = 0;
+    for (let j = 0; j < h; j++) { const r = (ry + j) * aw + rx, t = j * w; for (let i = 0; i < w; i++) tpl[t + i] += 0.06 * (gray[r + i] - tpl[t + i]); }
+  } else st.lost++;
+  return ok;
+}
+function btHalf(src, w, h) {
+  const hw = w >> 1, hh = h >> 1, o = new Float32Array(hw * hh);
+  for (let j = 0; j < hh; j++) for (let i = 0; i < hw; i++) o[j * hw + i] = (src[2 * j * w + 2 * i] + src[2 * j * w + 2 * i + 1] + src[(2 * j + 1) * w + 2 * i] + src[(2 * j + 1) * w + 2 * i + 1]) / 4;
+  return { a: o, w: hw, h: hh };
+}
+function btReacquire(st, gray) {
+  const f = btHalf(gray, st.aw, st.ah), t = btHalf(st.tpl, st.w, st.h);
+  let best = Infinity, bx = 0, by = 0, sum = 0, cnt = 0;
+  for (let y = 0; y <= f.h - t.h; y++) for (let x = 0; x <= f.w - t.w; x++) { const s = btSAD(f.a, f.w, t.a, t.w, t.h, x, y, 1); sum += s; cnt++; if (s < best) { best = s; bx = x; by = y; } }
+  const conf = cnt ? 1 - best / (sum / cnt) : 0;
+  if (conf > 0.45 && best < 32) {
+    st.x = clamp(bx * 2, 0, st.aw - st.w); st.y = clamp(by * 2, 0, st.ah - st.h); st.fx = st.x; st.fy = st.y;
+    btTrack(st, gray); st.lost = 0; return true;
+  }
+  return false;
+}
+
+/* --- glue: video -> greyscale -> tracker -> game coordinates --- */
+function grabGray() {
+  try {
+    const vw = video.videoWidth, vh = video.videoHeight; if (!vw || !vh) return false;
+    if (!BT.cv) { BT.cv = document.createElement('canvas'); BT.g = BT.cv.getContext('2d', { willReadFrequently: true }); }
+    const aw = BT.aw, ah = Math.round(aw * vh / vw);
+    if (BT.cv.width !== aw || BT.cv.height !== ah) { BT.cv.width = aw; BT.cv.height = ah; if (BT.ah !== ah) { BT.ah = ah; if (BT.locked) clearBottle(); } BT.gray = new Uint8Array(aw * ah); }
+    BT.g.drawImage(video, 0, 0, aw, ah);
+    const d = BT.g.getImageData(0, 0, aw, ah).data, g = BT.gray;
+    for (let i = 0, p = 0; i < g.length; i++, p += 4) g[i] = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
+    return true;
+  } catch (e) { return false; }
+}
+function bottleStep() {
+  if (!BT.st || !grabGray()) return;
+  const st = BT.st, ok = btTrack(st, BT.gray);
+  if (!ok && st.lost > 12 && (++BT.reTick % 6 === 0)) btReacquire(st, BT.gray);
+  if (ok || st.lost === 0) BT.lastOk = clock();
+  BT.conf = st.conf; BT.lost = st.lost;
+  const aw = BT.aw, ah = BT.ah, c = mapNorm((st.fx + st.w / 2) / aw, (st.fy + st.h / 2) / ah);
+  BT.x = c.x; BT.y = c.y;
+  const a = mapNorm(st.fx / aw, st.fy / ah), b = mapNorm((st.fx + st.w) / aw, (st.fy + st.h) / ah);
+  BT.box = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+}
+function updateBottle(dt) {
+  if (!BT.locked) { BT.tracking = false; return; }
+  BT.tracking = clock() - BT.lastOk < 0.45;
+  const k = 1 - Math.exp(-dt * 30); BT.sx += (BT.x - BT.sx) * k; BT.sy += (BT.y - BT.sy) * k;
+  const k2 = Math.min(1, dt * 2.5); BT.hx += (BT.sx - BT.hx) * k2; BT.hy += (BT.sy - BT.hy) * k2;
+  BT.dx = BT.sx - BT.hx; BT.dy = BT.sy - BT.hy;                // high-passed movement (used to rattle the on-screen glass)
+  const act = hands.filter(h => h.active);
+  BT.src.ax = BT.sx; BT.src.ay = BT.sy; BT.src.palm = act.length ? mean(act.map(h => h.palm || 110)) : 110; BT.src.minAmp = Math.max(18, BT.src.palm * 0.2);
+}
+function onBottle(x, y, pad) { const b = BT.box; return !!(BT.locked && BT.tracking && b && x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad); }
+
+/* --- lock-on / set-up --- */
+function lockFromNorm(n) {
+  if (!grabGray() && !BT.gray) return false;
+  const aw = BT.aw, ah = BT.ah;
+  let x0 = n.x0 * aw, y0 = n.y0 * ah, x1 = n.x1 * aw, y1 = n.y1 * ah;
+  const ix = (x1 - x0) * 0.12, iy = (y1 - y0) * 0.1; x0 += ix; x1 -= ix; y0 += iy; y1 -= iy;          // track the bottle body, not the edges
+  const w = clamp(Math.round(x1 - x0), 14, 64) & ~1, h = clamp(Math.round(y1 - y0), 18, 96) & ~1;
+  const x = clamp(Math.round((x0 + x1) / 2 - w / 2), 0, aw - w), y = clamp(Math.round((y0 + y1) / 2 - h / 2), 0, ah - h);
+  BT.st = btMakeState(BT.gray, aw, ah, x, y, w, h);
+  BT.locked = true; BT.tracking = true; BT.lastOk = clock(); BT.lost = 0; BT.cand = null; BT.sel = null;
+  bottleStep(); BT.sx = BT.hx = BT.x; BT.sy = BT.hy = BT.y;
+  endBottleSetup(); banner('🧴 Bottle locked — pour your ingredients, then shake it!', '#7af0c8');
+  return true;
+}
+function clearBottle() { BT.locked = false; BT.st = null; BT.tracking = false; BT.box = null; resetShake(shkB); banner('🧴 Real-bottle tracking off', '#ffd27a'); }
+function startBottleSetup() {
+  if (!camOn || inputMode !== 'cam') { banner('Real-bottle shaking needs the webcam (not mouse mode)', '#ff9a8a'); return; }
+  BT.fromCheck = $('check').classList.contains('show'); BT.setup = true; BT.sel = null; BT.cand = null;
+  $('check').classList.remove('show'); loadObjDetector();
+}
+function endBottleSetup() { const was = BT.setup; BT.setup = false; BT.sel = null; BT.cand = null; if (was && BT.fromCheck && mode === 'menu') showCheck(true); BT.fromCheck = false; }
+async function loadObjDetector() {
+  if (BT.det || BT.loading) return; BT.loading = true; BT.detErr = '';
+  try {
+    const mod = await import(TASKS_URL), fileset = await mod.FilesetResolver.forVisionTasks(TASKS_WASM);
+    BT.det = await mod.ObjectDetector.createFromOptions(fileset, { baseOptions: { modelAssetPath: OBJ_MODEL_URL, delegate: 'CPU' }, runningMode: 'VIDEO', scoreThreshold: 0.3, maxResults: 4, categoryAllowlist: ['bottle', 'cup'] });
+  } catch (e) { BT.detErr = 'Auto-detect unavailable'; console.warn('ObjectDetector failed:', e); }
+  BT.loading = false;
+}
+function iou(a, b) {
+  const ix = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)), iy = Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)), i = ix * iy;
+  const u = (a.x1 - a.x0) * (a.y1 - a.y0) + (b.x1 - b.x0) * (b.y1 - b.y0) - i; return u > 0 ? i / u : 0;
+}
+function setupDetect() {
+  BT.detBusy = true;
+  try {
+    let ts = performance.now(); if (ts <= BT.detTs) ts = BT.detTs + 1; BT.detTs = ts;
+    const r = BT.det.detectForVideo(video, ts), vw = video.videoWidth, vh = video.videoHeight; let best = null;
+    for (const d of (r.detections || [])) {
+      const c = d.categories && d.categories[0]; if (!c || !d.boundingBox) continue;
+      const sc = c.score * (c.categoryName === 'bottle' ? 1 : 0.8); if (!best || sc > best.sc) best = { sc, name: c.categoryName, b: d.boundingBox };
+    }
+    if (best && best.b.height > vh * 0.08) {
+      const n = { x0: best.b.originX / vw, y0: best.b.originY / vh, x1: (best.b.originX + best.b.width) / vw, y1: (best.b.originY + best.b.height) / vh };
+      if (BT.cand && iou(BT.cand.n, n) > 0.45) { BT.cand.hits++; BT.cand.n = n; } else BT.cand = { n, hits: 1 };
+      BT.cand.sc = best.sc; BT.cand.name = best.name; BT.candT = clock();
+    } else if (clock() - BT.candT > 0.8) BT.cand = null;
+    if (BT.cand && BT.cand.hits >= 3) lockFromNorm(BT.cand.n);
+  } catch (e) { BT.detErr = 'Auto-detect failed'; BT.det = null; console.warn(e); }
+  BT.detBusy = false;
+}
+function finishSel() {
+  const s = BT.sel; BT.sel = null; if (!s || Math.abs(s.x1 - s.x0) < 30 || Math.abs(s.y1 - s.y0) < 30) return;
+  const a = unmapLogical(s.x0, s.y0), b = unmapLogical(s.x1, s.y1);
+  lockFromNorm({ x0: clamp(Math.min(a.nx, b.nx), 0, 1), y0: clamp(Math.min(a.ny, b.ny), 0, 1), x1: clamp(Math.max(a.nx, b.nx), 0, 1), y1: clamp(Math.max(a.ny, b.ny), 0, 1) });
+}
+
+/* mouse acts as a third "hand" so the game is testable without a camera */
+let scale = 1, offX = 0, offY = 0, dpr = 1;
+function toLogical(e) { return { x: clamp((e.clientX - offX) / scale, 0, W), y: clamp((e.clientY - offY) / scale, 0, H) }; }
+window.addEventListener('pointermove', e => {
+  const p = toLogical(e); if (BT.sel) { BT.sel.x1 = p.x; BT.sel.y1 = p.y; }
+  mouseHand.active = true; mouseHand.show = true; mouseHand.tx = p.x; mouseHand.ty = p.y; mouseHand.lastSeen = clock(); mouseHand.moved = clock();
+});
+window.addEventListener('pointerdown', e => {
+  if (e.target !== cv) return; const p = toLogical(e);
+  if (BT.setup) { BT.sel = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; return; }
+  mouseHand.active = true; mouseHand.show = true; mouseHand.tx = mouseHand.x = p.x; mouseHand.ty = mouseHand.y = p.y; mouseHand.grab = true; mouseHand.moved = clock();
+});
+window.addEventListener('pointerup', () => { if (BT.sel) finishSel(); mouseHand.grab = false; });
+window.addEventListener('blur', () => { mouseHand.grab = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* =====================================================================
+   AUDIO (tiny WebAudio synth — no files)
+===================================================================== */
+let AC = null, master = null, muted = false, lastRattle = 0;
+function audioInit() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination); } catch (e) { AC = null; }
+}
+function tone(f, d, type = 'sine', v = 0.2, f2 = null, delay = 0) {
+  if (!AC || muted) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.03);
+}
+function noise(d, v = 0.2, type = 'bandpass', f0 = 800, f1 = null, q = 1) {
+  if (!AC || muted) return;
+  const t = AC.currentTime, n = Math.floor(AC.sampleRate * d), buf = AC.createBuffer(1, n, AC.sampleRate), data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+  const s = AC.createBufferSource(); s.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + d); f.Q.value = q;
+  const g = AC.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t);
+}
+const sfx = {
+  glug() { noise(0.16, 0.3, 'bandpass', 500, 900, 3); tone(300, 0.1, 'sine', 0.08, 520); },
+  ding() { tone(988, 0.35, 'sine', 0.18); tone(1480, 0.5, 'sine', 0.12, null, 0.07); },
+  coin() { tone(1318, 0.08, 'square', 0.06); tone(1976, 0.2, 'square', 0.06, null, 0.07); },
+  whoosh() { noise(0.28, 0.3, 'highpass', 600, 3500, 0.7); },
+  thud() { tone(140, 0.18, 'sine', 0.35, 50); noise(0.08, 0.2, 'lowpass', 800); },
+  bell() { tone(1400, 1.4, 'triangle', 0.18); tone(1404, 1.4, 'triangle', 0.14, null, 0.04); tone(2100, 1, 'sine', 0.07); },
+  buzz() { tone(150, 0.3, 'sawtooth', 0.12, 90); },
+  rattle() { const n = clock(); if (n - lastRattle < 0.07) return; lastRattle = n; noise(0.05, 0.1, 'highpass', 3500); },
+  clink() { tone(2600, 0.14, 'sine', 0.08); tone(3500, 0.1, 'sine', 0.05, null, 0.01); },
+  pop() { tone(500, 0.07, 'triangle', 0.1, 900); },
+  chime() { tone(660, 0.25, 'sine', 0.07); tone(880, 0.35, 'sine', 0.06, null, 0.12); },
+};
+
+/* =====================================================================
+   WORLD STATE
+===================================================================== */
+let mode = 'menu';           // menu | play | pause | end
+let T = 0;                   // animation clock
+let S = newState();
+
+function newState() {
+  return {
+    t: 0, tips: 0, tipsShown: 0, customers: [], seats: SEATS.map(x => ({ x, c: null })),
+    ratings: [], outcomes: [], chaos: 0, served: 0, walkouts: 0, creeps: 0, rowdy: 0, hits: 0, best: null,
+    nextSpawn: 2.5, nextId: 1, shake: 0, towelFast: 0, aim: null, lastCall: false, serveT: { c: null, t: 0 }, bouncer: null, bouncerCD: 0, proj: [], fx: [], sparks: [], banner: null,
+    events: [{ t: rand(50, 62), done: false }, { t: rand(125, 140), done: false }, { t: rand(200, 215), done: false }],
+  };
+}
+
+/* ---- items on the bar ---- */
+const items = [], bottles = [];
+function addItem(o) { Object.assign(o, { x: o.hx, y: o.hy, held: null, tilt: 0, tiltT: 0, alpha: 1, gone: false, hover: false }); items.push(o); return o; }
+const SHELF_Y = [150, 242];
+[['vodka', 'gin', 'rum', 'tequila', 'bourbon'], ['triple', 'vermouth', 'lime', 'cran', 'soda']].forEach((row, ri) => row.forEach((id, ci) => {
+  const w = INGR[id].fat ? 48 : 40, h = 76;
+  bottles.push(addItem({ kind: 'bottle', ing: id, hx: 100 + ci * 170 + (ri ? 60 : 0), hy: SHELF_Y[ri] - h / 2, w, h, pickR: 54, pourT: 0, pouring: false, side: 1, warned: false }));
+}));
+const vessel = addItem({ kind: 'vessel', hx: 330, hy: 572, w: 80, h: 112, pickR: 74 });
+const spoon  = addItem({ kind: 'spoon',  hx: 520, hy: 578, w: 30, h: 140, pickR: 84 });
+const glass  = addItem({ kind: 'glass',  hx: 700, hy: 584, w: 84, h: 100, pickR: 80, drink: null });
+const towel  = addItem({ kind: 'towel',  hx: 884, hy: 612, w: 90, h: 50, pickR: 74, respawn: 0, power: 0 });
+spoon.tilt = spoon.tiltT = 0.3;
+
+function vesselReset() {
+  Object.assign(vessel, { parts: {}, layers: [], total: 0, mixed: false, blend: 0, shakeGood: 0, stirGood: 0, over: 0, progress: 0,
+    pourOut: 0, tinA: 0, slosh: 0, dumpT: 0, side: -1, swirl: 0, magnet: null, stirZone: false, jx: 0, jy: 0, via: null });
+}
+vesselReset();
+
+function resetItems() {
+  for (const it of items) { it.x = it.hx; it.y = it.hy; it.held = null; it.tilt = it.tiltT = (it === spoon ? 0.3 : 0); it.alpha = 1; it.gone = false; it.pourT = 0; it.dumpT = 0; }
+  vesselReset(); glass.drink = null; glass.fillInfo = null;
+  for (const h of allHandsArr) h.item = null;
+}
+
+/* ---- UI hot-spots (canvas buttons) ---- */
+const UI = {
+  bouncer: { x: 1008, y: 556, w: 244, h: 132 },
+  dump:    { x: 34,   y: 556, w: 170, h: 134 },
+  pause:   { x: 1218, y: 10,  w: 42,  h: 36 },
+  mute:    { x: 1170, y: 10,  w: 42,  h: 36 },
+  bottle:  { x: 1122, y: 10,  w: 42,  h: 36 },
+};
+function uiAt(x, y) { for (const k in UI) { const r = UI[k]; if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return k; } return null; }
+
+/* =====================================================================
+   OVERLAYS / FLOW
+===================================================================== */
+const startEl = $('start'), endEl = $('end'), pauseEl = $('pauseOv');
+function setStatus(t, err) { const s = $('status'); s.textContent = t || ''; s.className = 'status' + (err ? ' err' : ''); }
+function setReach(v) { reach = v / 100; $('reachVal').textContent = reach.toFixed(2) + '×'; $('reachVal2').textContent = reach.toFixed(2) + '×'; $('reach').value = v; $('reach2').value = v; }
+$('reach').addEventListener('input', e => setReach(+e.target.value));
+$('reach2').addEventListener('input', e => setReach(+e.target.value));
+setReach(125); applyHandMode();
+
+$('btnMouse').addEventListener('click', () => { inputMode = 'mouse'; beginShift(); });
+$('btnCam').addEventListener('click', async () => {
+  const b = $('btnCam'); b.disabled = true; audioInit(); applyHandMode();
+  try {
+    if (!camOn || !engine) await startCamera();
+    inputMode = 'cam'; setStatus(''); showCheck(true);
+  } catch (err) {
+    console.error(err);
+    setStatus(camErrorMessage(err) + '  (You can still play with the mouse.)', true);
+  }
+  b.disabled = false;
+});
+function showCheck(on) { startEl.classList.toggle('show', !on); $('check').classList.toggle('show', on); if (on) updateCheck(); }
+$('btnStart2').addEventListener('click', beginShift);
+$('btnBottle').addEventListener('click', () => { if (BT.locked) clearBottle(); else startBottleSetup(); });
+$('btnBack').addEventListener('click', () => showCheck(false));
+$('camSel').addEventListener('change', async e => { try { await openStream(e.target.value); } catch (err) { $('chkHint').textContent = camErrorMessage(err); } });
+$('engSel').addEventListener('change', async e => {
+  $('chkTrk').textContent = 'Switching tracker…'; $('dTrk').className = 'dot wait';
+  try { await loadEngine(e.target.value); applyHandMode(); } catch (err) { $('chkHint').textContent = err.message; }
+});
+function updateCheck() {
+  const set = (dot, txt, cls, el) => { $(dot).className = 'dot ' + cls; $(el).textContent = txt; };
+  set('dCam', camOn ? `${diag.camName} · ${diag.camRes}` : 'No camera yet', camOn ? 'ok' : 'bad', 'chkCam');
+  if (engine) set('dTrk', `${diag.engine}${diag.delegate ? ' (' + diag.delegate + ')' : ''} · ${Math.round(diag.fps)} fps · ${Math.round(diag.ms)} ms`, diag.errors > errStreak + 3 ? 'wait' : 'ok', 'chkTrk');
+  else set('dTrk', 'Hand tracker not running', 'bad', 'chkTrk');
+  const n = hands.filter(h => h.active).length, grabbing = hands.some(h => h.active && h.grab);
+  if (n) set('dHand', `${n} hand${n > 1 ? 's' : ''} found — ${grabbing ? 'grab detected ✊ (that is how you pick things up)' : 'now try pinching thumb + finger, or a fist'}`, 'ok', 'chkHand');
+  else set('dHand', 'No hand yet — hold one up, palm toward the camera', 'wait', 'chkHand');
+  const idle = clock() - diag.lastHandsT;
+  $('chkHint').textContent = n ? '' : idle > 5 ? "Still nothing? Sit 40–70 cm back so your whole hand is in frame, turn a light toward your hand, and avoid a bright window behind you. Try Tracker ▸ CPU only or Classic if it still won't see you." : '';
+  if (diag.lastErr && errStreak >= 2) $('chkHint').textContent = 'Tracker error: ' + diag.lastErr;
+  if (BT.locked) set('dBot', BT.tracking ? `Real bottle: tracking ✓ (match ${Math.round(BT.conf * 100)}%) — shake it!` : 'Real bottle: searching… bring it back into view', BT.tracking ? 'ok' : 'wait', 'chkBot');
+  else set('dBot', 'Real bottle: not set up (optional: shake your own bottle to mix)', 'wait', 'chkBot');
+  $('btnBottle').textContent = BT.locked ? '🧴 Clear bottle' : '🧴 Real bottle';
+}
+setInterval(() => { if ($('check').classList.contains('show')) updateCheck(); }, 250);
+const note = $('envNote');
+if (typeof location !== 'undefined') {
+  if (location.protocol === 'file:' && IS_SAFARI) note.textContent = "Safari can't use the webcam from a local file. Use the launcher script (or open this file in Chrome). Mouse mode works anywhere.";
+  else if (typeof window.isSecureContext !== 'undefined' && !window.isSecureContext && location.protocol !== 'file:') note.textContent = 'The webcam only works on http://localhost or https. Mouse mode works anywhere.';
+}
+$('btnAgain').addEventListener('click', beginShift);
+$('btnMenu').addEventListener('click', toMenu);
+$('btnResume').addEventListener('click', () => togglePause(false));
+$('btnQuit').addEventListener('click', toMenu);
+
+function beginShift() {
+  audioInit(); S = newState(); resetItems(); mode = 'play';
+  startEl.classList.remove('show'); endEl.classList.remove('show'); pauseEl.classList.remove('show'); $('check').classList.remove('show');
+  banner('🍸 Doors are open — 9:00 PM', '#ffd27a');
+}
+function toMenu() { dropAll(); mode = 'menu'; S = newState(); resetItems(); endEl.classList.remove('show'); pauseEl.classList.remove('show'); $('check').classList.remove('show'); startEl.classList.add('show'); }
+function dropAll() { for (const h of allHandsArr) { if (h.item) { h.item.held = null; h.item = null; } } }
+function togglePause(force) {
+  if (mode !== 'play' && mode !== 'pause') return;
+  const want = force === undefined ? mode === 'play' : force;
+  if (want) { dropAll(); mode = 'pause'; pauseEl.classList.add('show'); } else { mode = 'play'; pauseEl.classList.remove('show'); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') togglePause(true); });
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (BT.setup) { if (k === 'escape') endBottleSetup(); else if (k === 'enter' && BT.cand) lockFromNorm(BT.cand.n); return; }
+  if (k === 'r' && camOn && inputMode === 'cam') { startBottleSetup(); return; }
+  if (k === 'm') muted = !muted;
+  else if (k === 'p' || k === 'escape') togglePause();
+  else if (k === 'b' && mode === 'play') callBouncer();
+  else if (k === 'd' && mode === 'play') uiClick('dump');
+  else if (k === 'enter') { if (startEl.classList.contains('show')) $('btnMouse').click(); else if (endEl.classList.contains('show')) beginShift(); }
+});
+
+/* =====================================================================
+   GAME LOGIC
+===================================================================== */
+const isDisruptive = c => c.state === 'waiting' && (c.type === 'creep' || (c.type === 'drunk' && c.rowdy));
+
+function addFx(x, y, text, color = '#fff', size = 24, life = 1.5, vy = -42) { S.fx.push({ x, y, text, color, size, life, t: 0, vy }); }
+function burst(x, y, n, color) { for (let i = 0; i < n; i++) { const a = rand(0, TAU), s = rand(60, 260); S.sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, t: 0, life: rand(0.5, 1.1), color, size: rand(2, 5) }); } }
+function banner(text, color) { S.banner = { text, color: color || '#ffd27a', t: 0, life: 3.4 }; }
+
+/* ---------- hands, grabbing, releasing ---------- */
+function nearestItem(x, y) {
+  let best = null, bd = 1e9;
+  for (const it of items) { if (it.held || it.gone) continue; const d = Math.hypot(x - it.x, y - it.y); if (d < it.pickR * 1.25 && d < bd) { bd = d; best = it; } }
+  return best;
+}
+function updateHands(dt) {
+  const now = clock();
+  for (const h of hands) {
+    if (h.active && now - h.lastSeen > (h.item ? 0.8 : 0.4)) {
+      h.grab = false; h.grabRaw = false; h.pinchOn = h.fistOn = false; if (h.item) releaseItem(h);
+      h.active = false; h.show = false; h.prevGrab = false; h.pts = null; h.grabOnT = h.grabOffT = 0;
+    }
+  }
+  for (const h of allHandsArr) {
+    if (!h.active) continue;
+    if (h !== mouseHand) {
+      const k = 1 - Math.exp(-dt * 24); h.x += (h.tx - h.x) * k; h.y += (h.ty - h.y) * k;
+      // debounce: a grab needs ~50ms of closed hand, and a held item survives a brief tracking flicker
+      if (h.grabRaw) { h.grabOnT += dt; h.grabOffT = 0; if (!h.grab && h.grabOnT >= 0.05) h.grab = true; }
+      else { h.grabOnT = 0; h.grabOffT += dt; const hold = h.item ? (h.item.kind === 'towel' ? 0.08 : 0.25) : 0.08; if (h.grab && h.grabOffT >= hold) h.grab = false; }
+    } else { h.x = h.tx; h.y = h.ty; }
+    // gx/gy = last position while the hand was really closed; ax/ay = where a held item should be
+    // (frozen while the fingers are opening, so releasing never drags the item sideways)
+    const raw = h === mouseHand ? h.grab : h.grabRaw;
+    if (raw) { h.gx = h.x; h.gy = h.y; }
+    if (raw || !h.grab) { h.ax = h.x; h.ay = h.y; } else { h.ax = h.gx; h.ay = h.gy; }
+    const d = Math.max(dt, 1e-3);
+    h.vx = lerp(h.vx, (h.ax - h.px) / d, 0.5); h.vy = lerp(h.vy, (h.ay - h.py) / d, 0.5); h.px = h.ax; h.py = h.ay;
+    h.hist.push({ t: T, x: h.ax, y: h.ay }); while (h.hist.length && T - h.hist[0].t > 0.5) h.hist.shift();
+  }
+  for (const it of items) it.hover = false;
+  for (const h of allHandsArr) {
+    if (!h.active) continue;
+    h.hoverUI = (mode === 'play' && !h.item) ? uiAt(h.x, h.y) : null;
+    if (!h.item && mode === 'play') { const b = nearestItem(h.x, h.y); if (b) b.hover = true; }
+    if (h !== mouseHand) {
+      if (h.hoverUI === 'bouncer' && !h.grab) { h.dwellT += dt; if (h.dwellT > 1.0 && !h.dwellDone) { h.dwellDone = true; uiClick('bouncer'); } }
+      else { h.dwellT = 0; h.dwellDone = h.hoverUI === 'bouncer' ? h.dwellDone : false; }
+    }
+  }
+  for (const h of allHandsArr) {
+    if (!h.active) { h.prevGrab = false; continue; }
+    if (h.grab && !h.prevGrab) onGrab(h);
+    if (!h.grab && h.prevGrab) onRelease(h);
+    h.prevGrab = h.grab;
+  }
+}
+
+function onGrab(h) {
+  if (mode !== 'play' || BT.setup) return;
+  if (onBottle(h.x, h.y, 40)) return;          // a hand gripping the real bottle should not grab on-screen props
+  const u = uiAt(h.x, h.y);
+  if (u) { uiClick(u); return; }
+  const best = nearestItem(h.x, h.y);
+  if (best) { best.held = h; h.item = best; sfx.pop(); if (best.kind === 'glass' || best.kind === 'vessel') sfx.clink(); }
+}
+function onRelease(h) { if (h.item) releaseItem(h); }
+
+function releaseItem(h) {
+  const it = h.item; if (!it) return;
+  it.held = null; h.item = null;
+  if (mode !== 'play') return;
+  if (it.kind === 'glass') { it.x = h.gx; it.y = h.gy; tryServe(it); }   // judge the drop where the hand was still closed
+  else if (it.kind === 'towel') tryThrow(it, h);
+}
+
+function uiClick(id) {
+  if (mode !== 'play') return;
+  if (id === 'pause') togglePause(true);
+  else if (id === 'mute') muted = !muted;
+  else if (id === 'bottle') { if (inputMode !== 'cam') return; if (BT.locked) clearBottle(); else startBottleSetup(); }
+  else if (id === 'bouncer') callBouncer();
+  else if (id === 'dump') {
+    if (vessel.total > 0 && !vessel.held) dumpItem(vessel);
+    else if (glass.drink && !glass.held) dumpItem(glass);
+    else addFx(119, 540, 'Nothing to dump', '#ffd1a0', 20);
+  }
+}
+function dumpItem(it) {
+  if (it === vessel) vesselReset(); else glass.drink = null;
+  sfx.glug(); addFx(119, 600, 'Down the drain', '#cde', 22);
+}
+
+/* ---------- towel throwing ----------
+   Hold the towel and a red lock-on appears on any troublemaker. Flick toward them:
+   - fast enough while still holding it -> it throws itself (no need to time the release)
+   - or open your hand mid-flick -> normal throw
+   Too slow -> "Flick harder!". Regulars are only hit if you aim almost straight at them. */
+const palmOf = h => h.palm || 110;
+function peakFlick(h) {
+  let best = null, bm = 0;
+  for (let i = 1; i < h.hist.length; i++) {
+    const a = h.hist[i - 1], b = h.hist[i], d = b.t - a.t; if (d < 1e-3 || T - b.t > 0.35) continue;
+    const vx = (b.x - a.x) / d, vy = (b.y - a.y) / d, m = Math.hypot(vx, vy);
+    if (m > bm) { bm = m; best = { vx, vy, m }; }
+  }
+  return best;
+}
+function pickAim(ox, oy, dx, dy) {
+  let best = null, bs = 1e9;
+  for (const c of S.customers) {
+    if (c.state !== 'waiting') continue;
+    const ax = c.x - ox, ay = 392 - oy, al = Math.hypot(ax, ay) || 1;
+    const ang = Math.acos(clamp((ax * dx + ay * dy) / al, -1, 1)), dis = isDisruptive(c), lim = dis ? 1.25 : 0.22;
+    if (ang < lim) { const sc = ang - (dis ? 0.5 : 0); if (sc < bs) { bs = sc; best = { c, dis, ang }; } }
+  }
+  return best;
+}
+function launchTowel(it, h, vx, vy, aim) {
+  const tgt = aim ? aim.c : null, dist = tgt ? Math.hypot(tgt.x - it.x, 392 - it.y) : 0;
+  S.proj.push({ sx: it.x, sy: it.y, x: it.x, y: it.y, vx, vy, t: 0, life: tgt ? clamp(0.26 + dist / 1900, 0.3, 0.55) : 0.8, tgt, rot: 0, s: 1, trail: [] });
+  if (h) { it.held = null; h.item = null; }
+  it.gone = true; it.respawn = THROW.respawn; S.towelFast = 0; S.aim = null; sfx.whoosh();
+}
+function tryThrow(it, h) {                         // called when the hand opens
+  const f = peakFlick(h); if (!f) return;
+  const sp = f.m / palmOf(h);
+  if (sp < THROW.weak) return;                     // just setting it down
+  if (sp < THROW.min) { addFx(it.x, it.y - 56, 'Flick harder!', '#ffd1a0', 24); return; }
+  if (f.vy / f.m > 0.45) { addFx(it.x, it.y - 56, 'Throw it AT them!', '#ffd1a0', 22); return; }
+  launchTowel(it, null, f.vx, f.vy, pickAim(it.x, it.y, f.vx / f.m, f.vy / f.m));
+}
+function updateTowel(dt) {
+  const t = towel; S.aim = null;
+  if (!t.held || t.gone) { S.towelFast = 0; t.power = 0; return; }
+  const h = t.held, m = Math.hypot(h.vx, h.vy), sp = m / palmOf(h);
+  t.power = sp / THROW.min;
+  let dx, dy;
+  if (sp > 1.5) { dx = h.vx / m; dy = h.vy / m; }
+  else {                                            // not moving yet: show the nearest troublemaker as the lock
+    let near = null, nd = 1e9;
+    for (const c of S.customers) if (isDisruptive(c)) { const d = Math.hypot(c.x - t.x, 392 - t.y); if (d < nd) { nd = d; near = c; } }
+    if (near) { const ax = near.x - t.x, ay = 392 - t.y, al = Math.hypot(ax, ay) || 1; dx = ax / al; dy = ay / al; }
+  }
+  if (dx !== undefined) S.aim = pickAim(t.x, t.y, dx, dy);
+  const upward = m > 0 && h.vy / m <= 0.45;
+  if (sp >= THROW.auto && upward && S.aim && S.aim.dis) S.towelFast++; else S.towelFast = 0;
+  if (S.towelFast >= 2) launchTowel(t, h, h.vx, h.vy, S.aim);
+}
+function updateProj(dt) {
+  for (const p of S.proj) {
+    p.t += dt; const k = clamp(p.t / p.life, 0, 1); p.rot += dt * (p.tgt ? 16 : 11);
+    p.trail.push({ x: p.x, y: p.y }); if (p.trail.length > 9) p.trail.shift();
+    if (p.tgt) {
+      const tx = p.tgt.x, ty = 385, e = 1 - Math.pow(1 - k, 1.8), dist = Math.hypot(tx - p.sx, ty - p.sy);
+      p.x = lerp(p.sx, tx, e); p.y = lerp(p.sy, ty, e) - Math.sin(k * Math.PI) * (40 + dist * 0.07); p.s = lerp(1.1, 0.75, k);
+    } else { p.x += p.vx * dt * 0.55; p.y += p.vy * dt * 0.55; p.s = lerp(1.1, 0.5, k); }
+    if (k >= 1 && !p.done) { p.done = true; if (p.tgt) impact(p.tgt, p); else addFx(clamp(p.x, 40, W - 40), clamp(p.y, 90, 520), 'Miss!', '#ffd1a0', 22); }
+  }
+  S.proj = S.proj.filter(p => !p.done);
+}
+function impact(c, p) {
+  sfx.thud(); burst(p.x, p.y, 16, '#ffe9a0');
+  if (c.state !== 'waiting') { addFx(p.x, p.y, 'Miss!', '#ffd1a0', 22); return; }
+  S.shake = 0.5; c.towelT = 1.3;
+  if (isDisruptive(c)) {
+    S.tips += c.type === 'creep' ? 6 : 4; S.hits++;
+    addFx(c.x, 330, pick(['BONK!', 'THWAP!', 'SPLAT!']), '#ffe27a', 40); addFx(c.x, 296, c.type === 'creep' ? '+$6 Peace restored' : '+$4', '#7af0a0', 22);
+    sfx.coin(); vacateSeat(c); c.state = 'leaving'; c.dir = Math.random() < 0.5 ? -1 : 1; c.vel = 800; c.spinV = c.dir * 9; c.leaveT = 0;
+    finishRemoval(c);
+  } else {
+    S.tips = Math.max(0, S.tips - 8); S.chaos += 5; S.ratings.push(1); S.outcomes.push(0);
+    addFx(c.x, 330, 'OW!', '#ff7a7a', 40); addFx(c.x, 296, '-$8 You hit a customer!', '#ff9a9a', 22); sfx.buzz();
+    vacateSeat(c); c.order = null; c.state = 'leaving'; c.dir = Math.random() < 0.5 ? -1 : 1; c.vel = 520; c.leaveT = 0; c.spinV = 0;
+  }
+}
+function finishRemoval(c) {
+  if (c.type === 'creep') S.creeps++;
+  else { S.rowdy++; S.ratings.push(2); S.outcomes.push(25); }
+}
+function vacateSeat(c) { const s = S.seats.find(s => s.c === c); if (s) s.c = null; }
+
+/* ---------- bouncer ---------- */
+function callBouncer() {
+  if (mode !== 'play') return;
+  if (S.bouncer) return;
+  if (S.bouncerCD > 0) { addFx(1130, 540, `Bouncer on break (${Math.ceil(S.bouncerCD)}s)`, '#ffd1a0', 20); return; }
+  const targets = S.customers.filter(isDisruptive);
+  if (!targets.length) { banner('No trouble right now — save the bouncer for later', '#9fd0ff'); return; }
+  targets.sort((a, b) => b.annoy - a.annoy);
+  const c = targets[0]; c.state = 'escort';
+  S.bouncer = { state: 'in', x: W + 140, t: 0, target: c };
+  S.tips = Math.max(0, S.tips - 5); S.bouncerCD = BOUNCER_CD; sfx.chime(); addFx(1130, 540, '-$5 bouncer fee', '#ff9a9a', 20);
+}
+function updateBouncer(dt) {
+  if (S.bouncerCD > 0) S.bouncerCD = Math.max(0, S.bouncerCD - dt);
+  const b = S.bouncer; if (!b) return;
+  b.t += dt; const c = b.target;
+  if (b.state === 'in') { const tx = c.x + 135; b.x = Math.max(tx, b.x - 950 * dt); if (b.x <= tx + 0.5) { b.state = 'grab'; b.t = 0; sfx.thud(); } }
+  else if (b.state === 'grab') { if (b.t > 0.45) { b.state = 'out'; c.state = 'carried'; vacateSeat(c); b.t = 0; } }
+  else if (b.state === 'out') { b.x += 640 * dt; c.x = b.x - 135; if (b.x > W + 260) { c.state = 'gone'; S.bouncer = null; finishRemoval(c); sfx.coin(); } }
+}
+
+/* ---------- customers ---------- */
+function newLook(type) {
+  const look = { skin: pick(SKINS), hair: pick(HAIRS), hairStyle: pick(['short', 'long', 'spiky', 'bald', 'short', 'curly']), shirt: pick(SHIRTS), acc: [], collar: Math.random() < 0.5 };
+  const a = pick([null, null, 'cap', 'glasses', 'beard', 'stache', 'beanie']); if (a) look.acc.push(a);
+  if (type === 'creep') { look.hairStyle = 'slick'; look.hair = '#14100e'; look.shirt = '#2b2233'; look.acc = ['shades', 'stache']; look.collar = true; }
+  if (type === 'drunk') look.acc = Math.random() < 0.5 ? ['beard'] : [];
+  if (type === 'rude') look.shirt = pick(['#7a1f1f', '#2b2b2b', '#4a2a6a']);
+  return look;
+}
+function makeOrder(type) {
+  if (type === 'vague') { const v = pick(VAGUE); return { text: v.t, accept: v.accept.slice() }; }
+  const r = pick(RECIPES), N = r.name;
+  const lines = {
+    regular: [`One ${N}, please.`, `Can I get a ${N}?`, `${N} for me, thanks!`, `I'll have a ${N}.`],
+    rude: [`Hey! ${N}. Today, not tomorrow.`, `Are you deaf? ${N}!`, `${N}. And don't screw it up.`, `Oi, barkeep! ${N}, NOW.`],
+    drunk: [`Hic... one ${N}, buddy!`, `Gimme a ${N}... 'n make it quick, pal.`, `${N}! No... a ${N}! Hic.`],
+  };
+  return { text: pick(lines[type]), accept: [r.id] };
+}
+function pickType() {
+  if (S.t < 20) return 'regular';
+  const r = Math.random(), late = S.t / SHIFT_LEN;
+  if (r < 0.12 + 0.1 * late) return 'drunk';
+  if (r < 0.30 + 0.1 * late) return 'rude';
+  if (r < 0.55) return 'vague';
+  return 'regular';
+}
+function spawnCustomer(type) {
+  const free = S.seats.filter(s => !s.c); if (!free.length) return false;
+  const seat = pick(free);
+  const c = { id: S.nextId++, type, x: seat.x, state: 'entering', enter: 0, t: 0, look: newLook(type), order: null, patience: 1, patienceMax: 1,
+    annoy: 0, rowdy: false, lineIdx: Math.floor(Math.random() * CREEP_LINES.length), lineT: 0, text: null, stars: 0, dir: 1, vel: 0, spin: 0, spinV: 0, leaveT: 0, timer: 0 };
+  if (type === 'creep') { banner('👀 A creep slid up to the bar — fling the towel or call the bouncer!', '#d9a0ff'); }
+  else { c.order = makeOrder(type); c.patienceMax = c.patience = PATIENCE[type] * (S.t < EARLY_GRACE ? 1.3 : 1); sfx.chime(); }
+  seat.c = c; S.customers.push(c); return true;
+}
+function spawnLogic() {
+  if (S.t < LAST_CALL_AT) {
+    const withOrders = S.customers.filter(c => c.order && (c.state === 'waiting' || c.state === 'entering')).length;
+    if (S.t >= S.nextSpawn) {
+      const ok = spawnCustomer(pickType());
+      const gap = Math.max(15, 27 - (S.t / SHIFT_LEN) * 11);
+      S.nextSpawn = S.t + (ok ? rand(gap * 0.8, gap * 1.2) : 2);
+    } else if (withOrders === 0 && S.nextSpawn - S.t > 4) S.nextSpawn = S.t + 2;
+  }
+  for (const e of S.events) {
+    if (e.done || S.t < e.t) continue;
+    if (S.t > LAST_CALL_AT + 10) { e.done = true; continue; }
+    if (spawnCustomer('creep')) e.done = true; else e.t = S.t + 2;
+  }
+}
+function updateCustomer(c, dt) {
+  c.t += dt; if (c.towelT > 0) c.towelT -= dt;
+  if (c.state === 'entering') { c.enter = Math.min(1, c.enter + dt * 2.2); if (c.enter >= 1) c.state = 'waiting'; return; }
+  if (c.state === 'waiting') {
+    const creepOn = S.customers.some(o => o !== c && o.state === 'waiting' && o.type === 'creep' && o.annoy > 0.25);
+    if (c.order) {
+      c.patience -= dt * (creepOn ? 1.7 : 1) * (c.type === 'drunk' && c.rowdy ? 1.2 : 1);
+      if (c.type === 'drunk' && !c.rowdy && c.patience / c.patienceMax < 0.45) { c.rowdy = true; banner('🥴 A drunk is getting rowdy!', '#ff9a5c'); sfx.buzz(); }
+      if (c.patience <= 0) { walkout(c); return; }
+    }
+    if (c.type === 'creep' || (c.type === 'drunk' && c.rowdy)) c.annoy = Math.min(1, c.annoy + dt / (c.type === 'creep' ? 14 : 16));
+    if (c.type === 'creep') { c.lineT += dt; if (c.lineT > 4.8) { c.lineT = 0; c.lineIdx++; } }
+  } else if (c.state === 'drinking') { c.timer -= dt; if (c.timer <= 0) leaveHappy(c); }
+  else if (c.state === 'leaving') { c.leaveT += dt; c.x += c.dir * c.vel * dt; c.spin += c.spinV * dt; if (c.leaveT > 1.3) c.state = 'gone'; }
+}
+function leaveHappy(c) { vacateSeat(c); c.state = 'leaving'; c.dir = Math.random() < 0.5 ? -1 : 1; c.vel = 300; c.leaveT = 0; c.spinV = 0; }
+function walkout(c) {
+  S.walkouts++; S.ratings.push(1); S.outcomes.push(0);
+  addFx(c.x, 330, 'Walked out! ★☆☆☆☆', '#ff8a8a', 26); sfx.buzz();
+  vacateSeat(c); c.order = null; c.text = null; c.state = 'leaving'; c.dir = Math.random() < 0.5 ? -1 : 1; c.vel = 520; c.leaveT = 0; c.spinV = 0;
+}
+
+/* ---------- pouring, mixing ---------- */
+const mixInfo = { active: false, method: null, meter: 0, zone: 'idle' };
+const shk = { pts: [], st: { x: null, y: null }, revs: [], speed: 0 };   // hand shaking
+const shkB = { pts: [], st: { x: null, y: null }, revs: [], speed: 0 };  // real-bottle shaking
+const stirHist = []; let stirLast = 0;
+function resetShake(sh) { sh = sh || shk; sh.pts.length = 0; sh.st.x = sh.st.y = null; sh.revs.length = 0; sh.speed = 0; }
+function addPart(ing) {
+  const v = vessel; v.parts[ing] = (v.parts[ing] || 0) + 1; v.layers.push(ing); v.total++; sfx.glug();
+  if (v.total >= VESSEL_CAP) addFx(v.x, v.y - 120, 'FULL', '#ffd27a', 24);
+}
+function methodOf(v) { if (!v.shakeGood && !v.stirGood) return null; return v.shakeGood >= v.stirGood ? 'shake' : 'stir'; }
+
+function updatePouring(dt) {
+  const v = vessel;
+  for (const b of bottles) {
+    b.tiltT = 0; let pouring = false, near = false;
+    if (b.held && !v.gone) {
+      const ay = v.y - 105, d1 = Math.hypot(b.x - (v.x - 68), b.y - ay), d2 = Math.hypot(b.x - (v.x + 68), b.y - ay);
+      const d = Math.min(d1, d2), side = d1 < d2 ? -1 : 1;
+      if (d < 90) {
+        near = true;
+        if (!v.mixed && v.total < VESSEL_CAP && v.pourOut === 0) { pouring = true; b.side = side; b.tiltT = -side * 1.85; }
+      }
+    }
+    if (near && !pouring && !b.warned) { b.warned = true; addFx(v.x, v.y - 130, v.mixed ? 'Already mixed — pour it out or dump it' : 'Glass is full', '#ffd1a0', 20); }
+    if (!near) b.warned = false;
+    b.pouring = pouring;
+    if (pouring) { b.pourT += dt; if (b.pourT >= POUR_UNIT) { b.pourT -= POUR_UNIT; addPart(b.ing); } }
+    else b.pourT = Math.max(0, b.pourT - dt * 2);
+  }
+  // mixing glass → cocktail glass. Generous zone based on the HAND position, and the glass is pulled
+  // into a neat pouring position so the stream lands in the cocktail glass.
+  v.tiltT = 0; v.magnet = null; let out = false;
+  if (v.held && v.total > 0 && !glass.drink) {
+    const h = v.held, gx = glass.x, gy = glass.y, grow = v.pourOut > 0.05 ? 1.25 : 1;
+    const calm = v.pourOut > 0.05 || (shk.revs.length < 3 && shkB.revs.length < 3);       // don't start pouring mid-shake
+    if (calm && Math.abs(h.ax - gx) < 190 * grow && h.ay > gy - 270 * grow && h.ay < gy - 5) {
+      out = true; v.side = h.ax < gx - 12 ? -1 : (h.ax > gx + 12 ? 1 : v.side);
+      v.tiltT = -v.side * 1.7; v.magnet = { x: gx + v.side * 95, y: gy - 100 };
+    }
+  }
+  if (out) {
+    v.pourOut = Math.min(1, v.pourOut + dt / POUR_OUT_TIME); v.pourSnd = (v.pourSnd || 0) + dt; if (v.pourSnd > 0.28) { v.pourSnd = 0; sfx.glug(); }
+    if (v.pourOut >= 1) completePour();
+  } else v.pourOut = Math.max(0, v.pourOut - dt * 0.6);
+}
+function completePour() {
+  const v = vessel;
+  glass.drink = { parts: Object.assign({}, v.parts), layers: v.layers.slice(), blend: v.mixed ? 1 : Math.min(1, v.progress), progress: v.progress,
+    over: v.over, shakeGood: v.shakeGood, stirGood: v.stirGood, mixed: v.mixed };
+  vesselReset(); sfx.clink(); addFx(glass.x, glass.y - 90, 'Poured!', '#ffe9a0', 24);
+}
+
+/* Shake = turning points of the hand (each needs a real amplitude, so tremor doesn't count).
+   Intensity = path speed in palm-lengths per second, so it works at any distance from the camera. */
+function trackShake(h, sh) {
+  sh = sh || shk;
+  const palm = h.palm || 110, minAmp = h.minAmp || Math.max(14, palm * 0.13);
+  sh.pts.push({ t: T, x: h.ax, y: h.ay }); while (sh.pts.length && T - sh.pts[0].t > 0.7) sh.pts.shift();
+  for (const a of ['x', 'y']) {
+    const p = a === 'x' ? h.ax : h.ay; const s = sh.st[a];
+    if (!s) { sh.st[a] = { dir: 0, ext: p, t: T }; continue; }
+    if (s.dir === 0) { if (p - s.ext >= minAmp) { s.dir = 1; s.ext = p; } else if (s.ext - p >= minAmp) { s.dir = -1; s.ext = p; } }
+    else if (s.dir === 1) { if (p > s.ext) s.ext = p; else if (s.ext - p >= minAmp) { sh.revs.push(T); s.dir = -1; s.ext = p; s.t = T; sfx.rattle(); } }
+    else { if (p < s.ext) s.ext = p; else if (p - s.ext >= minAmp) { sh.revs.push(T); s.dir = 1; s.ext = p; s.t = T; sfx.rattle(); } }
+    if (T - s.t > 0.9) { s.dir = 0; s.ext = p; s.t = T; }
+  }
+  sh.revs = sh.revs.filter(t => T - t < 0.8);
+  let len = 0; for (let i = 1; i < sh.pts.length; i++) len += Math.hypot(sh.pts[i].x - sh.pts[i - 1].x, sh.pts[i].y - sh.pts[i - 1].y);
+  const dur = sh.pts.length > 1 ? sh.pts[sh.pts.length - 1].t - sh.pts[0].t : 0;
+  sh.speed = dur > 0.2 ? len / dur / palm : 0;
+  return sh.revs.length >= 3;
+}
+/* Stir = steady rotation of the spoon: sampled every 40ms over ~1s, angular speed + direction consistency */
+function trackStir(x, y) {
+  if (T - stirLast >= 0.04) { stirLast = T; stirHist.push({ t: T, x, y }); }
+  while (stirHist.length && T - stirHist[0].t > 1.2) stirHist.shift();
+  const n = stirHist.length; if (n < 12) return { ang: 0, ok: false };
+  let cx = 0, cy = 0; stirHist.forEach(p => { cx += p.x; cy += p.y; }); cx /= n; cy /= n;
+  let rs = 0; const th = stirHist.map(p => { rs += Math.hypot(p.x - cx, p.y - cy); return Math.atan2(p.y - cy, p.x - cx); });
+  const r = rs / n; let sum = 0, abs = 0, maxStep = 0, rv = 0;
+  for (let i = 1; i < n; i++) { let d = th[i] - th[i - 1]; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; sum += d; abs += Math.abs(d); maxStep = Math.max(maxStep, Math.abs(d)); }
+  stirHist.forEach(p => { rv += Math.pow(Math.hypot(p.x - cx, p.y - cy) - r, 2); });
+  const dur = stirHist[n - 1].t - stirHist[0].t || 1, cons = abs > 0 ? Math.abs(sum) / abs : 0, cv = Math.sqrt(rv / n) / (r || 1);
+  // a straight sweep through the zone (big angle jump, uneven radius) must not count as stirring
+  return { ang: Math.abs(sum) / dur, ok: r > 12 && r < 200 && cons > 0.5 && maxStep < 1.6 && cv < 0.5 };
+}
+
+function updateMix(dt) {
+  const v = vessel; let method = null, target = 0;
+  const stirZone = !!(spoon.held && !v.held && Math.abs(spoon.x - v.x) < 140 && spoon.y > v.y - 230 && spoon.y < v.y + 10);
+  v.stirZone = stirZone;
+  const canMix = v.total > 0 && v.pourOut === 0;
+  let shaking = false, speed = 0, via = null;
+  if (canMix && v.held) { if (trackShake(v.held, shk)) { shaking = true; speed = shk.speed; via = 'hand'; } } else resetShake(shk);
+  if (canMix && BT.tracking) { if (trackShake(BT.src, shkB) && shkB.speed >= speed) { shaking = true; speed = shkB.speed; via = 'bottle'; } } else resetShake(shkB);
+  if (canMix && (v.held || via === 'bottle')) { method = 'shake'; target = shaking ? speed / SHAKE.max : 0; }
+  v.via = via;
+  if (!method && v.total > 0 && stirZone) { method = 'stir'; const s = trackStir(spoon.x, spoon.y); target = s.ok ? s.ang / STIR.max : 0; }
+  else if (!stirZone) stirHist.length = 0;
+  const cfg = method === 'stir' ? STIR : SHAKE;
+  mixInfo.meter += (clamp(target, 0, 1.2) - mixInfo.meter) * Math.min(1, dt * 8);
+  const m = mixInfo.meter;
+  mixInfo.active = !!method; mixInfo.method = method;
+  mixInfo.zone = !method ? 'idle' : m < 0.03 ? 'still' : m > cfg.hi ? 'hot' : m >= cfg.lo ? 'good' : 'low';
+  if (method) {
+    let add = 0;
+    if (mixInfo.zone === 'good') add = dt;
+    else if (mixInfo.zone === 'hot') { add = dt * 0.6; if (m > cfg.hi + 0.18) v.over += dt; }   // only truly wild motion ruins the drink
+    else if (mixInfo.zone === 'low') add = dt * 0.3;
+    if (method === 'shake') v.shakeGood += add; else v.stirGood += add;
+    v.progress = clamp(v.shakeGood / SHAKE.need + v.stirGood / STIR.need, 0, 1);
+    if (v.progress >= 1 && !v.mixed) { v.mixed = true; sfx.ding(); addFx(v.x, v.y - 130, 'MIXED!', '#7af0c8', 30); burst(v.x, v.y - 40, 12, '#aef'); }
+  } else mixInfo.meter *= Math.pow(0.02, dt);
+  v.blend += ((v.mixed ? 1 : v.progress * 0.7) - v.blend) * Math.min(1, dt * 3);
+  v.slosh = Math.sin(T * (method === 'stir' ? 9 : 18)) * mixInfo.meter * (method === 'stir' ? 0.8 : 1.4);
+  v.swirl = method === 'stir' && mixInfo.zone !== 'low' && mixInfo.zone !== 'still' ? 1 : 0;
+  const wantTin = method === 'shake' && (v.held || via === 'bottle') && mixInfo.meter > 0.1 && v.pourOut < 0.05 ? 1 : 0;
+  const jOn = via === 'bottle' && !v.held;               // the on-screen glass rattles along with the real bottle
+  v.jx = (v.jx || 0) + ((jOn ? clamp(BT.dx * 0.5, -28, 28) : 0) - (v.jx || 0)) * Math.min(1, dt * 25);
+  v.jy = (v.jy || 0) + ((jOn ? clamp(BT.dy * 0.5, -28, 28) : 0) - (v.jy || 0)) * Math.min(1, dt * 25);
+  v.tinA += (wantTin - v.tinA) * Math.min(1, dt * 8);
+}
+
+function inDrain(it) { const r = UI.dump; return it.x > r.x && it.x < r.x + r.w && it.y > r.y && it.y < r.y + r.h; }
+function updateItems(dt) {
+  spoon.tiltT = spoon.held ? 0 : 0.3;
+  for (const it of items) {
+    it.alpha = Math.min(1, it.alpha + dt * 3);
+    if (it.kind === 'towel' && it.gone) { it.respawn -= dt; if (it.respawn <= 0) { it.gone = false; it.x = it.hx; it.y = it.hy; it.alpha = 0; } continue; }
+    if (it.held) { const k = 1 - Math.exp(-dt * 30); let tx = it.held.ax, ty = it.held.ay; if (it.magnet) { tx = lerp(tx, it.magnet.x, 0.75); ty = lerp(ty, it.magnet.y, 0.75); } it.x += (tx - it.x) * k; it.y += (ty - it.y) * k; }
+    else if (it === vessel && (it.jx || it.jy)) { const k = 1 - Math.exp(-dt * 40); it.x += (it.hx + it.jx - it.x) * k; it.y += (it.hy + it.jy - it.y) * k; }
+    else { const k = 1 - Math.exp(-dt * 10); it.x += (it.hx - it.x) * k; it.y += (it.hy - it.y) * k; }
+    it.tilt += (it.tiltT - it.tilt) * Math.min(1, dt * 10);
+    if ((it === vessel || it === glass)) {
+      const has = it === vessel ? it.total > 0 : !!it.drink;
+      if (it.held && has && inDrain(it)) { it.dumpT = (it.dumpT || 0) + dt; if (it.dumpT > 0.7) { it.dumpT = 0; dumpItem(it); } } else it.dumpT = 0;
+    }
+  }
+  // fill info for the cocktail glass while pouring in
+  if (glass.drink) glass.fillInfo = Object.assign({ f: 1 }, glass.drink);
+  else if (vessel.pourOut > 0.01) glass.fillInfo = { f: vessel.pourOut, parts: vessel.parts, layers: vessel.layers, blend: vessel.blend };
+  else glass.fillInfo = null;
+}
+
+/* ---------- serving & scoring ---------- */
+function serveTargetFor(x, y, dxMax) {
+  let best = null, bd = 1e9;
+  for (const c of S.customers) { if (c.state !== 'waiting' || !c.order) continue; const dx = Math.abs(x - c.x); if (dx < dxMax && y < 585 && dx < bd) { bd = dx; best = c; } }
+  return best;
+}
+function doServe(g, c) { serveCustomer(c, g.drink); g.drink = null; g.x = g.hx; g.y = g.hy; g.alpha = 0; S.serveT = { c: null, t: 0 }; }
+function tryServe(g) {
+  if (!g.drink) return;
+  const c = serveTargetFor(g.x, g.y, 190);
+  if (c) { doServe(g, c); return; }
+  const idle = S.customers.find(o => o.state === 'waiting' && !o.order && Math.abs(g.x - o.x) < 110 && g.y < 585);
+  if (idle) { addFx(idle.x, 330, "They didn't order anything!", '#ffd1a0', 22); sfx.buzz(); }
+}
+/* hold a ready drink over a customer for a moment and it is served, no precise release needed */
+function updateServe(dt) {
+  const g = glass; let tgt = null;
+  if (g.held && g.drink) tgt = serveTargetFor(g.held.ax, g.held.ay, 150);
+  if (tgt && S.serveT.c === tgt) S.serveT.t += dt; else S.serveT = { c: tgt, t: 0 };
+  if (tgt && S.serveT.t >= 0.8) { const h = g.held; g.held = null; h.item = null; doServe(g, tgt); }
+}
+
+function evaluate(d, accept) {
+  let best = null;
+  for (const id of accept) {
+    const r = RECIPES.find(x => x.id === id); let err = 0;
+    new Set([...Object.keys(r.parts), ...Object.keys(d.parts)]).forEach(k => { err += Math.abs((r.parts[k] || 0) - (d.parts[k] || 0)); });
+    const tot = Object.values(r.parts).reduce((a, b) => a + b, 0), acc = Math.max(0, 1 - err / tot);
+    if (!best || acc > best.acc) best = { r, err, acc, tot };
+  }
+  return best;
+}
+function serveCustomer(c, d) {
+  const ev = evaluate(d, c.order.accept);
+  const method = !d.shakeGood && !d.stirGood ? null : (d.shakeGood >= d.stirGood ? 'shake' : 'stir');
+  const mismatch = method && method !== ev.r.method ? 1 : 0;
+  const mix = clamp(d.progress - 0.1 * d.over - 0.3 * mismatch, 0, 1);
+  const frac = c.patience / c.patienceMax;
+  const q = 0.55 * Math.pow(ev.acc, 3) + 0.45 * mix + (frac - 0.5) * 0.12;
+  let stars = q >= 0.88 ? 5 : q >= 0.7 ? 4 : q >= 0.5 ? 3 : q >= 0.28 ? 2 : 1;
+  const notes = [];
+  if (ev.acc < 0.5) { stars = 1; notes.push('Wrong drink!'); }
+  else {
+    if (mix < 0.3) { stars = Math.min(stars, 2); notes.push('Barely mixed'); }
+    if (ev.err > 0) notes.push(`Recipe off by ${ev.err} part${ev.err > 1 ? 's' : ''}`);
+    if (mismatch) notes.push(`Should be ${ev.r.method === 'shake' ? 'shaken' : 'stirred'}`);
+    if (d.over > 1.5) notes.push('Overworked');
+  }
+  const base = [0, 0, 2, 5, 9, 14][stars], bonus = frac > 0.6 && stars >= 3 ? 3 : 0;
+  const mult = { regular: 1, vague: 1.3, rude: stars >= 4 ? 1.5 : 0, drunk: 0.7 }[c.type];
+  const tip = Math.round((base + bonus) * mult);
+  S.tips += tip; S.served++; S.ratings.push(stars); S.outcomes.push(stars * 20);
+  if (!S.best || stars > S.best.stars) S.best = { name: ev.r.name, stars };
+  c.state = 'drinking'; c.timer = 2.8; c.stars = stars; c.text = pick(REACTIONS[stars]);
+  c.drinkInfo = { f: 1, parts: d.parts, layers: d.layers, blend: d.blend };
+  const star = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  addFx(c.x, 322, star, stars >= 4 ? '#ffd24a' : stars === 3 ? '#ffe9a0' : '#ff9a8a', 34, 2.2);
+  if (tip > 0) { addFx(c.x + 70, 300, '+$' + tip, '#7af0a0', 28, 2); sfx.coin(); }
+  if (notes.length) addFx(c.x, 282, notes.join(' · '), '#ffd1a0', 18, 2.4, -26);
+  if (stars === 5) { S.perfect = (S.perfect || 0) + 1; burst(c.x, 380, 24, '#ffd24a'); sfx.ding(); } else if (stars <= 2) sfx.buzz(); else sfx.clink();
+}
+function satisfaction() { const base = S.outcomes.length ? mean(S.outcomes) : 100; return clamp(base - S.chaos, 0, 100); }
+
+/* ---------- shift end ---------- */
+function endShift() {
+  mode = 'end'; dropAll();
+  const sat = satisfaction(), tipsScore = Math.min(100, S.tips / 110 * 100), score = sat * 0.7 + tipsScore * 0.3;
+  const grades = [[90, 'S', 'Legendary barkeep', '#ffd24a'], [80, 'A', 'Head bartender', '#7af0c8'], [68, 'B', 'Solid shift', '#8fd0ff'], [54, 'C', 'Rookie energy', '#ffe9a0'], [40, 'D', 'Rough night', '#ffb070'], [0, 'F', 'The manager wants a word', '#ff7a7a']];
+  const g = grades.find(x => score >= x[0]);
+  $('gLetter').textContent = g[1]; $('gLetter').style.color = g[3]; $('gTitle').textContent = g[2];
+  const stars = Math.round(clamp(score / 20, 0, 5) * 2) / 2;
+  $('finalStars').innerHTML = [0, 1, 2, 3, 4].map(i => `<span class="st" style="--f:${clamp(stars - i, 0, 1) * 100}%">★</span>`).join('');
+  $('stTips').textContent = '$' + S.tips; $('stSat').textContent = Math.round(sat) + '%'; $('stServed').textContent = S.served;
+  $('stWalk').textContent = S.walkouts; $('stTrouble').textContent = S.creeps + S.rowdy;
+  $('stBest').textContent = S.best ? `${S.best.name} ${'★'.repeat(S.best.stars)}` : '—';
+  let rec = '';
+  try { const best = +localStorage.getItem('lastcall_best') || 0; if (S.tips > best) { localStorage.setItem('lastcall_best', S.tips); rec = best ? `New personal best! (previous $${best})` : 'First shift on the books!'; } else rec = `Personal best: $${best}`; } catch (e) {}
+  $('stRecord').textContent = rec;
+  endEl.classList.add('show');
+}
+
+/* ---------- main update ---------- */
+function update(dt) {
+  T += dt;
+  updateHands(dt);
+  updateBottle(dt);
+  S.shake = Math.max(0, (S.shake || 0) - dt * 1.8);
+  for (const f of S.fx) { f.t += dt; f.y += f.vy * dt; }
+  S.fx = S.fx.filter(f => f.t < f.life);
+  for (const p of S.sparks) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 520 * dt; }
+  S.sparks = S.sparks.filter(p => p.t < p.life);
+  if (S.banner) { S.banner.t += dt; if (S.banner.t > S.banner.life) S.banner = null; }
+  if (mode !== 'play' || BT.setup) return;      // the shift is frozen while setting up the bottle
+
+  S.t += dt;
+  spawnLogic();
+  S.customers.forEach(c => updateCustomer(c, dt));
+  S.customers = S.customers.filter(c => c.state !== 'gone');
+  updateBouncer(dt);
+  updatePouring(dt);
+  updateItems(dt);
+  updateServe(dt);
+  updateTowel(dt);
+  updateMix(dt);
+  updateProj(dt);
+  let nuisance = 0; for (const c of S.customers) if (isDisruptive(c) && c.annoy >= 1) nuisance++;
+  S.chaos = Math.min(40, S.chaos + nuisance * 0.4 * dt);
+  S.tipsShown += (S.tips - S.tipsShown) * Math.min(1, dt * 6);
+  if (S.t >= LAST_CALL_AT && !S.lastCall) { S.lastCall = true; sfx.bell(); banner('🔔 LAST CALL! No new customers after this.', '#ffb347'); }
+  if (S.t >= SHIFT_LEN) endShift();
+}
+
+/* =====================================================================
+   RENDERING
+===================================================================== */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function glow(x, y, r, c0) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
+function text(s, x, y, o = {}) {
+  ctx.font = o.font || `600 16px ${F_BODY}`; ctx.textAlign = o.align || 'left'; ctx.textBaseline = o.base || 'alphabetic';
+  if (o.stroke) { ctx.lineWidth = o.sw || 3; ctx.strokeStyle = o.stroke; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y); }
+  if (o.shadow) { ctx.shadowColor = o.shadow; ctx.shadowBlur = o.sb || 8; }
+  ctx.fillStyle = o.color || '#fff'; ctx.fillText(s, x, y);
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+}
+function starPath(cx, cy, r) { ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r * 0.45 : r; const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.closePath(); }
+function drawStar(cx, cy, r, fill) {
+  starPath(cx, cy, r); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+  if (fill > 0) {
+    ctx.save(); ctx.beginPath(); ctx.rect(cx - r, cy - r, r * 2 * fill, r * 2); ctx.clip();
+    starPath(cx, cy, r); const g = ctx.createLinearGradient(0, cy - r, 0, cy + r); g.addColorStop(0, '#ffe27a'); g.addColorStop(1, '#f0a820'); ctx.fillStyle = g; ctx.fill(); ctx.restore();
+  }
+  starPath(cx, cy, r); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,220,130,.8)'; ctx.stroke();
+}
+const wrapCache = new Map();
+function wrapLines(s, maxW, font) {
+  const key = s + '|' + maxW + font; if (wrapCache.has(key)) return wrapCache.get(key);
+  ctx.font = font; const words = s.split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur);
+  if (wrapCache.size > 200) wrapCache.clear(); wrapCache.set(key, lines); return lines;
+}
+
+/* ---- background / room ---- */
+function drawBackground() {
+  if (camOn && video.videoWidth && video.readyState >= 2) {
+    const vw = video.videoWidth, vh = video.videoHeight, s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s;
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh); ctx.restore();
+    ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b9876a'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(18,7,5,0.34)'; ctx.fillRect(0, 0, W, H);
+  } else ctx.drawImage(roomCanvas, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  glow(250, 60, 380, 'rgba(255,170,70,0.20)'); glow(900, 60, 380, 'rgba(255,120,60,0.15)'); glow(640, 460, 520, 'rgba(255,150,60,0.07)');
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ---- back bar ---- */
+const decor = (() => {
+  const r = mulberry32(7), out = [], tints = ['#35563f', '#5a3a1e', '#2b3f5a', '#4a2a4a', '#6a5a2a', '#3a3a3a'];
+  [[185, 355, 525, 695, 865], [245, 415, 585, 755]].forEach((xs, ri) => xs.forEach(x => {
+    const kind = r() < 0.7 ? 'bottle' : 'glasses'; out.push({ ri, x, kind, h: 52 + r() * 18, w: 26 + r() * 10, c: tints[Math.floor(r() * tints.length)] });
+  }));
+  return out;
+})();
+function drawBackBar() {
+  ctx.save();
+  ctx.fillStyle = PAT.dark; rr(12, 56, 886, 212, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(217,178,90,.55)'; ctx.lineWidth = 2; rr(12, 56, 886, 212, 12); ctx.stroke();
+  ctx.fillStyle = 'rgba(8,4,3,0.58)'; rr(26, 68, 858, 194, 6); ctx.fill();
+  // mirror
+  ctx.save(); rr(26, 68, 858, 194, 6); ctx.clip();
+  let g = ctx.createLinearGradient(26, 68, 884, 262); g.addColorStop(0, 'rgba(150,175,190,0.26)'); g.addColorStop(0.5, 'rgba(90,110,125,0.08)'); g.addColorStop(1, 'rgba(150,175,190,0.20)');
+  ctx.fillStyle = g; ctx.fillRect(26, 68, 858, 194);
+  ctx.fillStyle = 'rgba(255,255,255,0.055)';
+  for (const sx of [120, 420, 700]) { ctx.beginPath(); ctx.moveTo(sx, 68); ctx.lineTo(sx + 60, 68); ctx.lineTo(sx - 60, 262); ctx.lineTo(sx - 120, 262); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  // decor
+  for (const d of decor) {
+    const by = SHELF_Y[d.ri]; ctx.save(); ctx.globalAlpha = 0.8;
+    if (d.kind === 'bottle') { ctx.fillStyle = d.c; rr(d.x - d.w / 2, by - d.h, d.w, d.h, 6); ctx.fill(); ctx.fillRect(d.x - 4, by - d.h - 14, 8, 16); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(d.x - d.w / 2 + 4, by - d.h + 8, 3, d.h - 16); }
+    else { ctx.fillStyle = 'rgba(200,225,240,.28)'; for (let i = 0; i < 3; i++) rr(d.x - 36 + i * 26, by - 34, 22, 34, 3), ctx.fill(); }
+    ctx.restore();
+  }
+  // shelves
+  for (let i = 0; i < 2; i++) {
+    const y = SHELF_Y[i];
+    ctx.fillStyle = PAT.light; ctx.fillRect(22, y, 866, 16);
+    ctx.fillStyle = 'rgba(255,220,150,.35)'; ctx.fillRect(22, y, 866, 2);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(22, y + 14, 866, 2);
+    g = ctx.createLinearGradient(0, y + 16, 0, y + 40); g.addColorStop(0, 'rgba(255,170,70,.30)'); g.addColorStop(1, 'rgba(255,170,70,0)'); ctx.fillStyle = g; ctx.fillRect(22, y + 16, 866, 24);
+  }
+  for (const b of bottles) text(INGR[b.ing].name.toUpperCase(), b.hx, SHELF_Y[b.hy > 180 ? 1 : 0] + 12.5, { font: `700 12px ${F_BODY}`, color: '#f4d99a', align: 'center' });
+  ctx.restore();
+}
+
+/* ---- chalkboard menu ---- */
+function drawMenuBoard() {
+  const x = 914, y = 66, w = 348, h = 398;
+  ctx.save();
+  ctx.fillStyle = PAT.dark; rr(x - 9, y - 9, w + 18, h + 18, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(217,178,90,.55)'; ctx.lineWidth = 2; rr(x - 9, y - 9, w + 18, h + 18, 12); ctx.stroke();
+  const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, '#26322d'); g.addColorStop(1, '#171f1c'); ctx.fillStyle = g; rr(x, y, w, h, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.beginPath(); ctx.ellipse(x + 120, y + 150, 150, 70, -0.3, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(x + 250, y + 290, 110, 60, 0.4, 0, TAU); ctx.fill();
+  text("TONIGHT'S MENU", x + w / 2, y + 36, { font: `400 30px ${F_DISP}`, color: '#f6f2e4', align: 'center', shadow: 'rgba(255,255,255,.35)', sb: 6 });
+  ctx.strokeStyle = 'rgba(246,242,228,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 40, y + 44); ctx.lineTo(x + w - 40, y + 44); ctx.stroke();
+  RECIPES.forEach((r, i) => {
+    const ry = y + 52 + i * 42;
+    text(r.name, x + 16, ry + 18, { font: `400 21px ${F_DISP}`, color: '#fff7dc' });
+    ctx.font = `400 21px ${F_DISP}`; const nw = ctx.measureText(r.name).width;
+    text(r.tags, x + 16 + nw + 10, ry + 17, { font: `italic 500 13px ${F_BODY}`, color: 'rgba(246,242,228,.6)' });
+    const pw = 52; ctx.fillStyle = r.method === 'shake' ? 'rgba(255,120,150,.9)' : 'rgba(110,220,200,.9)'; rr(x + w - 16 - pw, ry + 4, pw, 17, 8); ctx.fill();
+    text(r.method === 'shake' ? 'SHAKE' : 'STIR', x + w - 16 - pw / 2, ry + 17, { font: `700 12px ${F_BODY}`, color: '#1a1210', align: 'center' });
+    let px = x + 16;
+    for (const k in r.parts) {
+      ctx.fillStyle = INGR[k].color; ctx.beginPath(); ctx.arc(px + 4, ry + 31, 4.2, 0, TAU); ctx.fill();
+      const label = `${r.parts[k]}× ${INGR[k].name}`; text(label, px + 12, ry + 35, { font: `600 14px ${F_BODY}`, color: 'rgba(246,242,228,.92)' });
+      ctx.font = `600 14px ${F_BODY}`; px += 12 + ctx.measureText(label).width + 12;
+    }
+    if (i < RECIPES.length - 1) { ctx.strokeStyle = 'rgba(246,242,228,.14)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 14, ry + 40); ctx.lineTo(x + w - 14, ry + 40); ctx.stroke(); ctx.setLineDash([]); }
+  });
+  ctx.restore();
+}
+
+/* ---- customers ---- */
+function drawCustomer(c) {
+  if (c.state === 'gone') return;
+  const L = c.look;
+  let alpha = c.state === 'leaving' ? clamp(1 - c.leaveT / 1.2, 0, 1) : (c.state === 'carried' ? 1 : c.enter);
+  let sway = 0, tilt = c.spin;
+  if (c.type === 'drunk' && c.state === 'waiting') { sway = Math.sin(T * 1.7 + c.id) * 8; tilt += Math.sin(T * 1.7 + c.id) * 0.05; }
+  if (c.state === 'carried') tilt += -0.25;
+  const bob = Math.sin(T * 2.2 + c.id * 1.7) * 1.6, cx = c.x + sway, cy = 398 + (1 - c.enter) * 60 + bob;
+  let mood = 'happy';
+  if (c.state === 'drinking') mood = c.stars >= 4 ? 'joy' : c.stars === 3 ? 'meh' : 'angry';
+  else if (c.state === 'carried' || c.state === 'escort') mood = 'shock';
+  else if (c.state === 'leaving') mood = c.order === null && c.text === null ? 'angry' : 'happy';
+  else if (c.order) { const f = c.patience / c.patienceMax; mood = f > 0.55 ? 'happy' : f > 0.25 ? 'meh' : 'angry'; }
+  if (c.type === 'creep' && c.state === 'waiting') mood = 'smirk';
+  if (c.type === 'drunk' && c.state === 'waiting') mood = c.rowdy ? 'rant' : 'drunk';
+  // eyes follow the nearest hand
+  let lx = 0, ly = 0, bd = 1e9;
+  for (const h of allHandsArr) if (h.active) { const d = Math.hypot(h.x - cx, h.y - cy); if (d < bd) { bd = d; lx = clamp((h.x - cx) / 80, -1, 1) * 2.6; ly = clamp((h.y - cy) / 80, -1, 1) * 2.2; } }
+
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy + 38); ctx.rotate(tilt); ctx.translate(0, -38);
+  // torso
+  const sg = ctx.createLinearGradient(0, 38, 0, 125); sg.addColorStop(0, L.shirt); sg.addColorStop(1, shade(L.shirt, 0.62));
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(-82, 125); ctx.lineTo(-82, 66); ctx.quadraticCurveTo(-82, 42, -50, 38); ctx.lineTo(50, 38); ctx.quadraticCurveTo(82, 42, 82, 66); ctx.lineTo(82, 125); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = shade(L.skin, 0.85); rr(-12, 24, 24, 24, 4); ctx.fill();
+  if (c.type === 'creep') {
+    ctx.fillStyle = '#3d3248'; ctx.beginPath(); ctx.moveTo(-20, 38); ctx.lineTo(-58, 62); ctx.lineTo(-30, 82); ctx.lineTo(-6, 50); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(20, 38); ctx.lineTo(58, 62); ctx.lineTo(30, 82); ctx.lineTo(6, 50); ctx.closePath(); ctx.fill();
+  } else if (L.collar) { ctx.fillStyle = '#f4f1ea'; ctx.beginPath(); ctx.moveTo(-22, 38); ctx.lineTo(0, 62); ctx.lineTo(22, 38); ctx.lineTo(10, 36); ctx.lineTo(0, 46); ctx.lineTo(-10, 36); ctx.closePath(); ctx.fill(); }
+  else { ctx.fillStyle = shade(L.skin, 0.9); ctx.beginPath(); ctx.ellipse(0, 40, 18, 9, 0, 0, Math.PI); ctx.fill(); }
+  // hair (back)
+  ctx.fillStyle = L.hair;
+  if (L.hairStyle === 'long') { rr(-37, -8, 14, 62, 6); ctx.fill(); rr(23, -8, 14, 62, 6); ctx.fill(); }
+  // ears + head
+  ctx.fillStyle = shade(L.skin, 0.92); ctx.beginPath(); ctx.ellipse(-31, 3, 5, 8, 0, 0, TAU); ctx.ellipse(31, 3, 5, 8, 0, 0, TAU); ctx.fill();
+  const hg = ctx.createLinearGradient(-30, -30, 30, 30); hg.addColorStop(0, shade(L.skin, 1.06)); hg.addColorStop(1, shade(L.skin, 0.88));
+  ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(0, 0, 31, 35, 0, 0, TAU); ctx.fill();
+  // hair (front)
+  ctx.fillStyle = L.hair;
+  if (L.hairStyle === 'short' || L.hairStyle === 'long') { ctx.beginPath(); ctx.ellipse(0, -8, 33, 30, 0, Math.PI, TAU); ctx.fill(); ctx.fillRect(-33, -10, 6, 14); ctx.fillRect(27, -10, 6, 14); }
+  else if (L.hairStyle === 'spiky') { ctx.beginPath(); ctx.moveTo(-32, -10); for (let i = 0; i < 7; i++) { ctx.lineTo(-32 + i * 10.7 + 5, -46 - (i % 2) * 6); ctx.lineTo(-32 + (i + 1) * 10.7, -10); } ctx.closePath(); ctx.fill(); }
+  else if (L.hairStyle === 'curly') { for (let i = 0; i < 7; i++) { ctx.beginPath(); ctx.arc(-27 + i * 9, -26 + Math.abs(i - 3) * 2.5, 10, 0, TAU); ctx.fill(); } }
+  else if (L.hairStyle === 'slick') { ctx.beginPath(); ctx.ellipse(0, -9, 33, 29, 0, Math.PI, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.ellipse(-8, -30, 12, 3, -0.3, 0, TAU); ctx.fill(); }
+  else if (L.hairStyle === 'bald') { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.ellipse(-8, -22, 9, 5, -0.4, 0, TAU); ctx.fill(); }
+  // face
+  const ey = -4, shades = L.acc.includes('shades');
+  if (mood === 'drunk' || mood === 'rant') { ctx.fillStyle = 'rgba(255,70,70,.32)'; ctx.beginPath(); ctx.arc(-19, 9, 7, 0, TAU); ctx.arc(19, 9, 7, 0, TAU); ctx.fill(); }
+  if (shades) {
+    ctx.fillStyle = '#0c0a0e'; rr(-27, ey - 8, 24, 14, 5); ctx.fill(); rr(3, ey - 8, 24, 14, 5); ctx.fill(); ctx.fillRect(-4, ey - 5, 8, 3);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(-23, ey - 5, 6, 2); ctx.fillRect(7, ey - 5, 6, 2);
+  } else {
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(sx * 12, ey, 7, mood === 'drunk' || mood === 'joy' ? 3.8 : 6.2, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#1b1209'; const px = mood === 'drunk' ? Math.sin(T * 3 + sx) * 2.5 : lx; ctx.beginPath(); ctx.arc(sx * 12 + px, ey + (mood === 'drunk' ? 0 : ly * 0.6), mood === 'shock' ? 2 : 3.2, 0, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = shade(L.hair, 0.9); ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (const sx of [-1, 1]) {
+      ctx.beginPath();
+      if (mood === 'angry' || mood === 'rant') { ctx.moveTo(sx * 21, -16 + 0); ctx.lineTo(sx * 6, -10); ctx.moveTo(sx * 21, -16); ctx.lineTo(sx * 6, -10); }
+      else if (mood === 'shock') { ctx.moveTo(sx * 18, -20); ctx.lineTo(sx * 7, -19); }
+      else { ctx.moveTo(sx * 19, -15); ctx.quadraticCurveTo(sx * 12, -19, sx * 6, -15); }
+      ctx.stroke();
+    }
+  }
+  // mouth
+  ctx.strokeStyle = '#4a1d18'; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.beginPath();
+  if (mood === 'happy') ctx.arc(0, 8, 11, 0.15 * Math.PI, 0.85 * Math.PI);
+  else if (mood === 'joy') { ctx.fillStyle = '#5a1710'; ctx.arc(0, 8, 12, 0, Math.PI); ctx.fill(); }
+  else if (mood === 'meh') { ctx.moveTo(-8, 17); ctx.lineTo(8, 17); }
+  else if (mood === 'angry') ctx.arc(0, 28, 11, 1.15 * Math.PI, 1.85 * Math.PI);
+  else if (mood === 'smirk') { ctx.moveTo(-10, 18); ctx.quadraticCurveTo(2, 22, 11, 12); }
+  else if (mood === 'shock') { ctx.fillStyle = '#5a1710'; ctx.ellipse(0, 19, 6, 8, 0, 0, TAU); ctx.fill(); }
+  else if (mood === 'drunk') { ctx.moveTo(-11, 17); for (let i = 1; i <= 6; i++) ctx.lineTo(-11 + i * 3.7, 17 + (i % 2 ? 3 : -2)); }
+  else if (mood === 'rant') { ctx.fillStyle = '#5a1710'; ctx.ellipse(0, 18, 11, 8 + Math.abs(Math.sin(T * 9)) * 3, 0, 0, TAU); ctx.fill(); }
+  ctx.stroke();
+  // accessories
+  for (const a of L.acc) {
+    if (a === 'stache') { ctx.fillStyle = shade(L.hair, 0.8); ctx.beginPath(); ctx.moveTo(-14, 11); ctx.quadraticCurveTo(0, 5, 14, 11); ctx.quadraticCurveTo(0, 17, -14, 11); ctx.fill(); }
+    if (a === 'beard') { ctx.fillStyle = shade(L.hair, 0.85); ctx.beginPath(); ctx.moveTo(-30, 6); ctx.quadraticCurveTo(-26, 44, 0, 44); ctx.quadraticCurveTo(26, 44, 30, 6); ctx.quadraticCurveTo(0, 22, -30, 6); ctx.fill(); }
+    if (a === 'glasses') { ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-12, ey, 9, 0, TAU); ctx.moveTo(21, ey); ctx.arc(12, ey, 9, 0, TAU); ctx.moveTo(-3, ey); ctx.lineTo(3, ey); ctx.stroke(); }
+    if (a === 'cap') { ctx.fillStyle = '#b03a3a'; ctx.beginPath(); ctx.ellipse(0, -14, 33, 24, 0, Math.PI, TAU); ctx.fill(); ctx.fillStyle = '#8a2a2a'; rr(-6, -17, 44, 7, 3); ctx.fill(); }
+    if (a === 'beanie') { ctx.fillStyle = '#3a5a8a'; ctx.beginPath(); ctx.ellipse(0, -12, 34, 28, 0, Math.PI, TAU); ctx.fill(); ctx.fillStyle = '#2a4670'; rr(-34, -16, 68, 9, 4); ctx.fill(); }
+  }
+  if (c.towelT > 0) { ctx.save(); ctx.translate(0, -2); ctx.rotate(0.18 + Math.sin(T * 14) * 0.03 * Math.min(1, c.towelT)); ctx.globalAlpha *= Math.min(1, c.towelT * 2);
+    ctx.fillStyle = '#e9e2d2'; rr(-38, -22, 76, 44, 9); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-38, -10, 76, 6); ctx.fillRect(-38, 6, 76, 6); ctx.restore(); }
+  ctx.restore();
+}
+function drawBubble(c) {
+  if (c.enter < 1 || c.state === 'leaving' || c.state === 'gone') return;
+  let msg = null, bar = null, barCol = '#5ac26a', fill = '#fdf3dc', stroke = '#3a2416', icon = '';
+  if (c.state === 'drinking') msg = c.text;
+  else if (c.state === 'escort') msg = 'Hey! Hands off the jacket!';
+  else if (c.state === 'carried') msg = c.type === 'creep' ? 'Lemme go! I was just being friendly!' : "Okay okay, I'm going!";
+  else if (c.state === 'waiting') {
+    if (c.order) {
+      msg = c.order.text; const f = clamp(c.patience / c.patienceMax, 0, 1); bar = f; barCol = f > 0.55 ? '#5ac26a' : f > 0.25 ? '#f0b030' : '#e0443c';
+      icon = { regular: '', vague: '❓', rude: '💢', drunk: '🥴' }[c.type];
+      if (c.type === 'rude') fill = '#ffd9d2'; else if (c.type === 'drunk') fill = '#fff1b8';
+      if (c.rowdy) { fill = '#ffd0c0'; stroke = '#c0281c'; bar = c.annoy; barCol = '#e0443c'; icon = '🤬'; }
+    } else if (c.type === 'creep') {
+      msg = CREEP_LINES[c.lineIdx % CREEP_LINES.length]; fill = '#e7d3f5'; bar = c.annoy; barCol = c.annoy > 0.99 ? '#ff3b3b' : '#b45cd9'; icon = '👀';
+      if (c.annoy >= 1) stroke = '#c0281c';
+    }
+  }
+  if (!msg) return;
+  const bw = 236, font = `600 17px ${F_BODY}`, lines = wrapLines(msg, bw - 30, font), bh = 16 + lines.length * 20 + (bar !== null ? 16 : 6);
+  let bx = clamp(c.x - bw / 2, 12, 892 - bw), by = 360 - bh;
+  if (c.rowdy || (c.type === 'creep' && c.annoy >= 1)) { bx += Math.sin(T * 40) * 1.5; }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = fill; rr(bx, by, bw, bh, 12); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.lineWidth = 2.5; ctx.strokeStyle = stroke; rr(bx, by, bw, bh, 12); ctx.stroke();
+  ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(c.x - 9, by + bh - 1); ctx.lineTo(c.x, by + bh + 9); ctx.lineTo(c.x + 9, by + bh - 1); ctx.fill();
+  ctx.strokeStyle = stroke; ctx.beginPath(); ctx.moveTo(c.x - 9, by + bh); ctx.lineTo(c.x, by + bh + 9); ctx.lineTo(c.x + 9, by + bh); ctx.stroke();
+  ctx.fillStyle = fill; ctx.fillRect(c.x - 8, by + bh - 3, 16, 4);
+  lines.forEach((l, i) => text(l, bx + 15, by + 26 + i * 20, { font, color: '#2a1a10' }));
+  if (icon) text(icon, bx + bw - 12, by + 20, { font: '16px sans-serif', align: 'right' });
+  if (bar !== null) { const yy = by + bh - 14; ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(bx + 15, yy, bw - 30, 7, 3.5); ctx.fill(); ctx.fillStyle = barCol; rr(bx + 15, yy, Math.max(7, (bw - 30) * bar), 7, 3.5); ctx.fill(); }
+  ctx.restore();
+}
+function drawServedGlasses() {
+  for (const c of S.customers) if (c.state === 'drinking' && c.drinkInfo) drawCocktailGlass(c.x + 74, 452, 0.62, c.drinkInfo, 1);
+}
+function drawBouncer() {
+  const b = S.bouncer; if (!b) return;
+  ctx.save(); ctx.translate(b.x, 372); ctx.scale(1.18, 1.18);
+  const g = ctx.createLinearGradient(0, 50, 0, 150); g.addColorStop(0, '#26262c'); g.addColorStop(1, '#0e0e12');
+  ctx.fillStyle = g; rr(-100, 54, 200, 120, 38); ctx.fill();
+  text('SECURITY', 0, 112, { font: `400 26px ${F_DISP}`, color: '#e8e0c8', align: 'center' });
+  ctx.fillStyle = '#c9a84a'; ctx.fillRect(-60, 120, 120, 3);
+  ctx.fillStyle = '#1a1a20'; rr(-136, 62, 44, 108, 20); ctx.fill(); rr(92, 62, 44, 108, 20); ctx.fill();
+  const reachArm = b.state === 'grab' || b.state === 'out';
+  ctx.fillStyle = '#b9825a';
+  if (reachArm) { ctx.save(); ctx.translate(-118, 80); ctx.rotate(0.9); ctx.fillStyle = '#1a1a20'; rr(-16, 0, 32, 90, 14); ctx.fill(); ctx.fillStyle = '#b9825a'; ctx.beginPath(); ctx.arc(0, 96, 15, 0, TAU); ctx.fill(); ctx.restore(); }
+  else { ctx.beginPath(); ctx.arc(-114, 172, 15, 0, TAU); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(114, 172, 15, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#a87450'; rr(-16, 40, 32, 24, 5); ctx.fill();
+  ctx.fillStyle = '#b9825a'; ctx.beginPath(); ctx.ellipse(0, 12, 36, 40, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#0c0a0e'; rr(-31, 0, 27, 15, 5); ctx.fill(); rr(4, 0, 27, 15, 5); ctx.fill(); ctx.fillRect(-5, 4, 10, 3);
+  ctx.strokeStyle = '#2a1a12'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(-11, 30); ctx.lineTo(11, 30); ctx.stroke();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(34, 8); ctx.quadraticCurveTo(50, 40, 30, 64); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---- counter ---- */
+function drawCounter() {
+  const y0 = 468;
+  ctx.save();
+  ctx.fillStyle = PAT.dark; ctx.fillRect(0, y0, W, 24);
+  ctx.fillStyle = 'rgba(255,215,140,.5)'; ctx.fillRect(0, y0, W, 2);
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(0, y0 + 24, W, 4); ctx.fillStyle = 'rgba(255,240,190,.6)'; ctx.fillRect(0, y0 + 24, W, 1.5);
+  const g = ctx.createLinearGradient(0, y0 + 28, 0, H); g.addColorStop(0, 'rgba(98,56,30,0.82)'); g.addColorStop(1, 'rgba(40,20,11,0.92)');
+  ctx.fillStyle = g; ctx.fillRect(0, y0 + 28, W, H - y0 - 28);
+  ctx.globalAlpha = 0.33; ctx.fillStyle = PAT.light; ctx.fillRect(0, y0 + 28, W, H - y0 - 28); ctx.globalAlpha = 1;
+  const sh = ctx.createLinearGradient(0, y0 + 28, 0, y0 + 110); sh.addColorStop(0, 'rgba(255,225,170,.18)'); sh.addColorStop(1, 'rgba(255,225,170,0)'); ctx.fillStyle = sh; ctx.fillRect(0, y0 + 28, W, 82);
+  // wet rings
+  const r = mulberry32(21); ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 3;
+  for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(260 + r() * 800, 520 + r() * 150, 14 + r() * 8, 0, TAU); ctx.stroke(); }
+  // rubber mat
+  ctx.fillStyle = 'rgba(10,10,12,.58)'; rr(250, 520, 720, 176, 14); ctx.fill();
+  ctx.save(); rr(250, 520, 720, 176, 14); ctx.clip(); ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
+  for (let i = -200; i < 760; i += 22) { ctx.beginPath(); ctx.moveTo(250 + i, 520); ctx.lineTo(250 + i + 176, 696); ctx.moveTo(250 + i + 176, 520); ctx.lineTo(250 + i, 696); ctx.stroke(); }
+  ctx.restore(); ctx.strokeStyle = 'rgba(201,162,74,.5)'; ctx.lineWidth = 2; rr(250, 520, 720, 176, 14); ctx.stroke();
+  drawDrain(); drawBouncerButton();
+  ctx.restore();
+}
+function anyHover(id) { return allHandsArr.some(h => h.active && h.hoverUI === id); }
+function drawDrain() {
+  const r = UI.dump, hov = anyHover('dump');
+  ctx.save(); ctx.fillStyle = hov ? '#6f7a82' : '#4f585f'; rr(r.x, r.y, r.w, r.h, 12); ctx.fill();
+  ctx.strokeStyle = '#a6b0b6'; ctx.lineWidth = 3; rr(r.x, r.y, r.w, r.h, 12); ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 3;
+  for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.moveTo(r.x + 18 + i * 17, r.y + 18); ctx.lineTo(r.x + 18 + i * 17, r.y + r.h - 34); ctx.stroke(); }
+  text('DUMP', r.x + r.w / 2, r.y + r.h - 10, { font: `400 22px ${F_DISP}`, color: '#e8eef2', align: 'center' });
+  for (const it of [vessel, glass]) if (it.held && it.dumpT > 0.02) { ctx.strokeStyle = '#7af0c8'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(r.x + r.w / 2, r.y + 55, 30, -Math.PI / 2, -Math.PI / 2 + TAU * it.dumpT / 0.7); ctx.stroke(); }
+  ctx.restore();
+}
+function drawBouncerButton() {
+  const r = UI.bouncer, hov = anyHover('bouncer'), cd = S.bouncerCD > 0, trouble = S.customers.some(isDisruptive);
+  ctx.save();
+  const pulse = trouble && !cd && mode === 'play' ? 0.5 + 0.5 * Math.sin(T * 6) : 0;
+  const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+  if (cd) { g.addColorStop(0, '#4a4f55'); g.addColorStop(1, '#2a2d31'); } else { g.addColorStop(0, hov ? '#ff5a4a' : '#d83a2e'); g.addColorStop(1, '#8c1a14'); }
+  ctx.shadowColor = cd ? 'transparent' : `rgba(255,70,50,${0.35 + pulse * 0.5})`; ctx.shadowBlur = 20 + pulse * 18;
+  ctx.fillStyle = g; rr(r.x, r.y, r.w, r.h, 18); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,230,190,.7)'; ctx.lineWidth = 3; rr(r.x, r.y, r.w, r.h, 18); ctx.stroke();
+  text('CALL BOUNCER', r.x + r.w / 2, r.y + 58, { font: `400 36px ${F_DISP}`, color: '#fff3e0', align: 'center', stroke: 'rgba(0,0,0,.35)', sw: 4 });
+  text(cd ? `back in ${Math.ceil(S.bouncerCD)}s` : 'removes creeps & rowdy drunks · $5', r.x + r.w / 2, r.y + 86, { font: `600 16px ${F_BODY}`, color: 'rgba(255,240,220,.9)', align: 'center' });
+  text('[B]  or pinch · or hold your hand here', r.x + r.w / 2, r.y + 112, { font: `500 14px ${F_BODY}`, color: 'rgba(255,240,220,.65)', align: 'center' });
+  if (cd) { ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(r.x, r.y + r.h - 8, r.w, 8, 4); ctx.fill(); ctx.fillStyle = '#ffb347'; rr(r.x, r.y + r.h - 8, r.w * (1 - S.bouncerCD / BOUNCER_CD), 8, 4); ctx.fill(); }
+  ctx.restore();
+}
+
+/* ---- items ---- */
+function drawBottle(b) {
+  const I = INGR[b.ing], w = b.w, hh = b.h / 2, nw = w * 0.34;
+  ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tilt); if (b.held) ctx.scale(1.08, 1.08); ctx.globalAlpha = b.alpha;
+  if (b.held || b.hover) { ctx.shadowColor = b.held ? '#2de2c5' : '#ffd27a'; ctx.shadowBlur = 20; }
+  const body = () => {
+    ctx.beginPath(); ctx.moveTo(-w / 2, hh - 5); ctx.quadraticCurveTo(-w / 2, hh, -w / 2 + 5, hh); ctx.lineTo(w / 2 - 5, hh); ctx.quadraticCurveTo(w / 2, hh, w / 2, hh - 5);
+    ctx.lineTo(w / 2, -hh * 0.18); ctx.bezierCurveTo(w / 2, -hh * 0.42, nw / 2, -hh * 0.34, nw / 2, -hh * 0.58); ctx.lineTo(nw / 2, -hh * 0.72); ctx.lineTo(-nw / 2, -hh * 0.72); ctx.lineTo(-nw / 2, -hh * 0.58);
+    ctx.bezierCurveTo(-nw / 2, -hh * 0.34, -w / 2, -hh * 0.42, -w / 2, -hh * 0.18); ctx.closePath();
+  };
+  const gg = ctx.createLinearGradient(-w / 2, 0, w / 2, 0); gg.addColorStop(0, shade(I.glass, 0.7)); gg.addColorStop(0.35, shade(I.glass, 1.15)); gg.addColorStop(1, shade(I.glass, 0.6));
+  body(); ctx.fillStyle = gg; ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+  ctx.save(); body(); ctx.clip(); ctx.globalAlpha = b.alpha * 0.9; ctx.fillStyle = I.color; ctx.fillRect(-w / 2, -hh * 0.12, w, hh * 1.2); ctx.globalAlpha = b.alpha; ctx.restore();
+  ctx.fillStyle = I.label; rr(-w / 2 + 3, hh * 0.08, w - 6, hh * 0.5, 3); ctx.fill();
+  text(I.short, 0, hh * 0.08 + hh * 0.25 + 3.5, { font: `700 ${I.short.length > 4 ? 8.5 : 10}px ${F_BODY}`, color: lum(I.label) > 0.55 ? '#241408' : '#fff5e0', align: 'center' });
+  ctx.fillStyle = I.cap; rr(-nw / 2 - 1.5, -hh, nw + 3, hh * 0.3, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.38)'; rr(-w / 2 + 5, -hh * 0.1, 4, hh * 1.0, 2); ctx.fill();
+  ctx.restore();
+}
+function drawLiquidIn(info, yTop, yBot, wHalf) {
+  const colU = blendColor(info.parts), n = info.layers.length; if (!n) return;
+  const unit = (yBot - yTop) / n; let yy = yBot;
+  for (let i = 0; i < n; i++) { const c = mixRGB(hex2rgb(INGR[info.layers[i]].color), colU, info.blend); ctx.fillStyle = rgb(c, 0.93); ctx.fillRect(-wHalf, yy - unit - 0.6, wHalf * 2, unit + 1.2); yy -= unit; }
+}
+function drawVessel(v) {
+  if (v.gone) return;
+  const topW = 76, botW = 54, hh = 56;
+  ctx.save(); ctx.translate(v.x, v.y); ctx.globalAlpha = v.alpha; ctx.rotate(v.tilt);
+  if (v.held || v.hover) { ctx.shadowColor = v.held ? '#2de2c5' : '#ffd27a'; ctx.shadowBlur = 20; }
+  const path = () => { ctx.beginPath(); ctx.moveTo(-topW / 2, -hh); ctx.lineTo(topW / 2, -hh); ctx.lineTo(botW / 2, hh - 8); ctx.quadraticCurveTo(botW / 2, hh, botW / 2 - 8, hh); ctx.lineTo(-botW / 2 + 8, hh); ctx.quadraticCurveTo(-botW / 2, hh, -botW / 2, hh - 8); ctx.closePath(); };
+  path(); ctx.fillStyle = 'rgba(190,220,235,0.13)'; ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+  if (v.total > 0) {
+    ctx.save(); path(); ctx.clip();
+    const fillH = (v.total / VESSEL_CAP) * (2 * hh - 18), yTop = hh - 5 - fillH, tf = clamp(Math.abs(v.tilt) / 1.8, 0, 1), colU = blendColor(v.parts);
+    if (tf < 0.25) {
+      ctx.rotate(v.slosh * 0.22);
+      drawLiquidIn({ parts: v.parts, layers: v.layers, blend: v.blend }, yTop, hh - 5, 60);
+      ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(-60, yTop - 1.5, 120, 3);
+      if (v.swirl) { ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, yTop + 16, 16, 5, T * 6, 0, TAU * 0.7); ctx.stroke(); }
+    } else {
+      ctx.rotate(-v.tilt); const sy = lerp(lerp(yTop, 10, tf), 76, v.pourOut); ctx.fillStyle = rgb(colU, 0.93); ctx.fillRect(-90, sy, 180, 200);
+    }
+    ctx.restore();
+  }
+  if (v.mixed) { path(); ctx.fillStyle = 'rgba(235,248,255,.13)'; ctx.fill(); }
+  path(); ctx.strokeStyle = 'rgba(235,248,255,.65)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(-topW / 2 + 8, -hh + 8, 4, 70);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(0, -hh, topW / 2, 5, 0, 0, TAU); ctx.stroke();
+  ctx.fillStyle = 'rgba(235,248,255,.5)'; ctx.beginPath(); ctx.ellipse(0, hh, botW / 2 - 2, 4, 0, 0, TAU); ctx.fill();
+  if (v.tinA > 0.03) {
+    ctx.globalAlpha = v.alpha * v.tinA; const jx = Math.sin(T * 60) * 2 * v.tinA;
+    const sg = ctx.createLinearGradient(-36, 0, 36, 0); sg.addColorStop(0, '#8a9299'); sg.addColorStop(0.3, '#e8eef2'); sg.addColorStop(0.7, '#b6bec5'); sg.addColorStop(1, '#6f777e');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(-37 + jx, -hh - 34); ctx.lineTo(37 + jx, -hh - 34); ctx.lineTo(33 + jx, -6); ctx.lineTo(-33 + jx, -6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(-34 + jx, -hh - 8, 68, 4);
+  }
+  ctx.restore();
+}
+function drawVesselChips(v) {
+  if (v.gone || v.total === 0 || v.pourOut > 0.05) return;
+  const e = Object.entries(v.parts); ctx.font = `700 14px ${F_BODY}`;
+  const ws = e.map(([k, n]) => ctx.measureText(`${INGR[k].name} ×${n}`).width + 24), tot = ws.reduce((a, b) => a + b, 0) + (e.length - 1) * 5;
+  let x = v.x - tot / 2; const y = v.y - 108;
+  e.forEach(([k, n], i) => {
+    ctx.fillStyle = 'rgba(15,8,6,.8)'; rr(x, y - 12, ws[i], 24, 12); ctx.fill();
+    ctx.fillStyle = INGR[k].color; ctx.beginPath(); ctx.arc(x + 12, y, 5, 0, TAU); ctx.fill();
+    text(`${INGR[k].name} ×${n}`, x + 21, y + 5, { font: `700 14px ${F_BODY}`, color: '#fbefd6' }); x += ws[i] + 5;
+  });
+}
+function drawCocktailGlass(x, y, s, info, alpha) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.globalAlpha *= alpha;
+  const top = -44, tip = 6, rw = 42;
+  const bowl = () => { ctx.beginPath(); ctx.moveTo(-rw, top); ctx.lineTo(rw, top); ctx.lineTo(3, tip); ctx.lineTo(-3, tip); ctx.closePath(); };
+  ctx.fillStyle = 'rgba(210,230,245,.55)'; ctx.beginPath(); ctx.ellipse(0, 48, 24, 5, 0, 0, TAU); ctx.fill(); ctx.fillRect(-2.5, tip, 5, 42);
+  bowl(); ctx.fillStyle = 'rgba(200,225,240,.14)'; ctx.fill();
+  if (info && info.f > 0.01) {
+    ctx.save(); bowl(); ctx.clip(); const ly = lerp(tip + 2, top + 6, clamp(info.f, 0, 1));
+    if (info.layers && info.layers.length) drawLiquidIn(info, ly, tip + 2, rw);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(-rw, ly - 1, rw * 2, 2.5); ctx.restore();
+  }
+  bowl(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, top, rw, 5, 0, 0, TAU); ctx.stroke();
+  if (info && info.f > 0.99 && info.parts && info.parts.lime) { ctx.fillStyle = '#9ad43a'; ctx.beginPath(); ctx.arc(rw - 6, top, 11, 0, TAU); ctx.fill(); ctx.strokeStyle = '#d8f58a'; ctx.lineWidth = 2; ctx.stroke(); }
+  ctx.restore();
+}
+function drawGlass(g) {
+  ctx.save(); ctx.globalAlpha = g.alpha;
+  if (g.held || g.hover) { ctx.shadowColor = g.held ? '#2de2c5' : '#ffd27a'; ctx.shadowBlur = 20; }
+  drawCocktailGlass(g.x, g.y, 1, g.fillInfo, 1); ctx.restore();
+  if (g.drink && !g.held) text('READY — serve me!', g.x, g.y - 62, { font: `700 15px ${F_BODY}`, color: '#ffe9a0', align: 'center', stroke: 'rgba(0,0,0,.6)' });
+}
+function drawSpoon(s) {
+  ctx.save(); ctx.translate(s.x, s.y); ctx.globalAlpha = s.alpha; ctx.rotate(s.tilt);
+  if (s.held || s.hover) { ctx.shadowColor = s.held ? '#2de2c5' : '#ffd27a'; ctx.shadowBlur = 18; }
+  const g = ctx.createLinearGradient(-4, 0, 4, 0); g.addColorStop(0, '#9aa3aa'); g.addColorStop(0.5, '#f4f8fa'); g.addColorStop(1, '#7c858c');
+  ctx.fillStyle = g; rr(-3, -66, 6, 108, 3); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = 1; for (let y = -58; y < 38; y += 7) { ctx.beginPath(); ctx.moveTo(-3, y); ctx.lineTo(3, y + 4); ctx.stroke(); }
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -68, 7, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, 54, 10, 15, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(0, 56, 6, 10, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+function drawTowel(t) {
+  if (t.gone) return;
+  const trouble = mode === 'play' && S.customers.some(isDisruptive), pulse = 0.5 + 0.5 * Math.sin(T * 6);
+  ctx.save(); ctx.translate(t.x, t.y); ctx.globalAlpha = t.alpha; ctx.rotate(-0.12); ctx.scale(1.15, 1.15);
+  if (t.held) { ctx.shadowColor = t.power >= 1 ? '#7af0a0' : '#2de2c5'; ctx.shadowBlur = 22; }
+  else if (trouble) { ctx.shadowColor = `rgba(255,90,70,${0.5 + 0.5 * pulse})`; ctx.shadowBlur = 16 + pulse * 14; }
+  else if (t.hover) { ctx.shadowColor = '#ffd27a'; ctx.shadowBlur = 18; }
+  ctx.fillStyle = '#e9e2d2'; rr(-38, -20, 76, 40, 8); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#c0392b'; ctx.fillRect(-38, -10, 76, 6); ctx.fillRect(-38, 6, 76, 6);
+  ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(-38, 14, 76, 6); ctx.fillRect(-4, -20, 3, 40);
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2; rr(-38, -20, 76, 40, 8); ctx.stroke();
+  ctx.restore();
+  if (!t.held) text(trouble ? 'FLICK AT THE TROUBLEMAKER!' : 'BAR TOWEL', t.x, t.y + 44, { font: `700 13px ${F_BODY}`, color: trouble ? '#ff9a8a' : '#ffd1a0', align: 'center', stroke: 'rgba(0,0,0,.6)', sw: 3 });
+}
+function shadowFor(it) { if (it.held || it.gone) return; ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(it.x, it.y + it.h / 2 - 2, it.w * 0.55, 8, 0, 0, TAU); ctx.fill(); }
+function drawItem(it) { if (it.kind === 'bottle') drawBottle(it); else if (it.kind === 'vessel') { drawVessel(it); drawVesselChips(it); } else if (it.kind === 'glass') drawGlass(it); else if (it.kind === 'spoon') drawSpoon(it); else if (it.kind === 'towel') drawTowel(it); }
+function drawStreams() {
+  const v = vessel;
+  for (const b of bottles) if (b.pouring) {
+    const mx = b.x + Math.sin(b.tilt) * 38, my = b.y - Math.cos(b.tilt) * 38, tx = v.x + (mx - v.x) * 0.3, ty = v.y - 40 - Math.min(v.total / VESSEL_CAP, 1) * 40;
+    ctx.strokeStyle = rgb(hex2rgb(INGR[b.ing].color), 0.95); ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.quadraticCurveTo(tx, my, tx, ty); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(v.x, v.y - 62, 24, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(b.pourT / POUR_UNIT, 0, 1)); ctx.stroke();
+  }
+  if (v.pourOut > 0.02 && v.held) {
+    const mx = v.x - v.side * 51, my = v.y + 45, tx = glass.x, ty = glass.y - 38;
+    ctx.strokeStyle = rgb(blendColor(v.parts), 0.95); ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(mx, my); ctx.quadraticCurveTo(tx, my, tx, ty); ctx.stroke();
+  }
+}
+function drawProj() {
+  for (const p of S.proj) {
+    p.trail.forEach((q, i) => { ctx.globalAlpha = (i / p.trail.length) * 0.35; ctx.fillStyle = '#fff3d0'; ctx.beginPath(); ctx.arc(q.x, q.y, 4 + i * 0.9, 0, TAU); ctx.fill(); });
+    ctx.globalAlpha = 1; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(p.s, p.s);
+    ctx.fillStyle = '#e9e2d2'; rr(-30, -17, 60, 34, 7); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-30, -8, 60, 6); ctx.fillRect(-30, 5, 60, 6);
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 2; rr(-30, -17, 60, 34, 7); ctx.stroke(); ctx.restore();
+  }
+}
+/* lock-on reticle + power ring while the towel is in your hand */
+function drawTowelAim() {
+  const t = towel; if (mode !== 'play' || !t.held || t.gone) return;
+  const a = S.aim, pw = clamp(t.power, 0, 1), ready = t.power >= 1;
+  ctx.save();
+  ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.arc(t.x, t.y, 58, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = ready ? '#7af0a0' : '#ffd27a'; ctx.beginPath(); ctx.arc(t.x, t.y, 58, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.01, pw)); ctx.stroke();
+  if (a) {
+    const col = a.dis ? '#ff4b4b' : '#ffd24a', cx = a.c.x, cy = 392, r = 50 + Math.sin(T * 8) * 3;
+    ctx.setLineDash([8, 8]); ctx.lineDashOffset = -T * 40; ctx.lineWidth = 3; ctx.strokeStyle = a.dis ? 'rgba(255,90,90,.7)' : 'rgba(255,210,74,.7)';
+    ctx.beginPath(); ctx.moveTo(t.x, t.y - 30); ctx.lineTo(cx, cy + 20); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    for (let i = 0; i < 4; i++) { const an = i * Math.PI / 2 + Math.PI / 4, c1 = Math.cos(an), s1 = Math.sin(an); ctx.beginPath(); ctx.moveTo(cx + c1 * (r - 10), cy + s1 * (r - 10)); ctx.lineTo(cx + c1 * (r + 12), cy + s1 * (r + 12)); ctx.stroke(); }
+    text(a.dis ? (ready ? 'LOCKED — THROW!' : 'LOCKED — FLICK!') : "DON'T — REGULAR!", cx, cy - r - 12, { font: `700 20px ${F_BODY}`, color: col, align: 'center', stroke: 'rgba(0,0,0,.75)', sw: 5 });
+  }
+  ctx.restore();
+}
+function drawFx() {
+  for (const p of S.sparks) { ctx.globalAlpha = clamp(1 - p.t / p.life, 0, 1); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  for (const f of S.fx) {
+    const k = f.t / f.life; ctx.globalAlpha = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    text(f.text, f.x, f.y, { font: `700 ${f.size}px ${F_BODY}`, color: f.color, align: 'center', stroke: 'rgba(10,4,3,.85)', sw: 5 });
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---- real-bottle overlay ---- */
+function brackets(r, col, label, jitter) {
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  const L = Math.min(26, r.w / 3, r.h / 3), j = jitter ? (Math.random() - 0.5) * 4 : 0, x0 = r.x + j, y0 = r.y + j, x1 = r.x + r.w + j, y1 = r.y + r.h + j;
+  for (const [x, y, sx, sy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) { ctx.beginPath(); ctx.moveTo(x, y + sy * L); ctx.lineTo(x, y); ctx.lineTo(x + sx * L, y); ctx.stroke(); }
+  if (label) text(label, r.x + r.w / 2, r.y - 10, { font: `700 18px ${F_BODY}`, color: col, align: 'center', stroke: 'rgba(0,0,0,.75)', sw: 5 });
+  ctx.restore();
+}
+function normRect(n) { const a = mapNorm(n.x0, n.y0), b = mapNorm(n.x1, n.y1); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }; }
+function drawBottleOverlay() {
+  if (inputMode !== 'cam' || !camOn) return;
+  if (BT.setup) {
+    const line = BT.sel ? 'Release to lock the box around your bottle'
+      : BT.cand ? `Found a ${BT.cand.name} (${Math.round(BT.cand.sc * 100)}%) — hold it steady ${Math.min(3, BT.cand.hits)}/3, or press Enter`
+      : BT.det ? 'Hold your bottle up in view — scanning…' : BT.detErr ? BT.detErr + ' — drag a box around your bottle instead' : 'Loading auto-detect…';
+    ctx.save(); ctx.fillStyle = 'rgba(10,4,3,.88)'; rr(W / 2 - 400, 70, 800, 86, 16); ctx.fill(); ctx.strokeStyle = '#2de2c5'; ctx.lineWidth = 2.5; rr(W / 2 - 400, 70, 800, 86, 16); ctx.stroke();
+    text('🧴 REAL-BOTTLE SETUP', W / 2, 100, { font: `400 28px ${F_DISP}`, color: '#7af0c8', align: 'center' });
+    text(line, W / 2, 128, { font: `600 19px ${F_BODY}`, color: '#ffe9c4', align: 'center' });
+    text('Or drag a box around the bottle with the mouse / trackpad  ·  Esc to cancel', W / 2, 148, { font: `500 15px ${F_BODY}`, color: 'rgba(255,233,196,.7)', align: 'center' });
+    ctx.restore();
+    if (BT.cand) brackets(normRect(BT.cand.n), '#7af0c8', `${BT.cand.name} ${Math.round(BT.cand.sc * 100)}%`, false);
+    if (BT.sel) { const s = BT.sel; ctx.save(); ctx.setLineDash([10, 8]); ctx.lineWidth = 3; ctx.strokeStyle = '#ffd27a'; ctx.strokeRect(Math.min(s.x0, s.x1), Math.min(s.y0, s.y1), Math.abs(s.x1 - s.x0), Math.abs(s.y1 - s.y0)); ctx.restore(); }
+    return;
+  }
+  if (BT.locked && BT.box) {
+    const shaking = vessel.via === 'bottle' && mixInfo.active;
+    brackets(BT.box, !BT.tracking ? '#ffd27a' : shaking ? '#7af0a0' : '#2de2c5', !BT.tracking ? '🧴 searching…' : shaking ? '🧴 SHAKING!' : '🧴 tracked', shaking);
+  }
+}
+
+/* ---- hands ---- */
+function drawHands() {
+  for (const h of hands) {
+    if (!h.active || !h.pts) continue;
+    const ox = h.x - h.tx, oy = h.y - h.ty;
+    ctx.save(); ctx.translate(ox, oy); ctx.lineCap = 'round';
+    ctx.strokeStyle = h.grab ? 'rgba(255,90,140,.85)' : 'rgba(255,214,150,.8)'; ctx.lineWidth = 3; ctx.shadowColor = h.grab ? '#ff3b7a' : '#ffb347'; ctx.shadowBlur = 10;
+    for (const [a, b] of HAND_LINES) { ctx.beginPath(); ctx.moveTo(h.pts[a].x, h.pts[a].y); ctx.lineTo(h.pts[b].x, h.pts[b].y); ctx.stroke(); }
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff6e0';
+    h.pts.forEach((p, i) => { ctx.beginPath(); ctx.arc(p.x, p.y, [4, 8, 12, 16, 20].includes(i) ? 4.5 : 2.6, 0, TAU); ctx.fill(); });
+    ctx.restore();
+  }
+  for (const h of allHandsArr) {
+    if (!h.active || !h.show) continue;
+    if (h === mouseHand && inputMode === 'cam' && clock() - (h.moved || 0) > 2 && !h.grab) continue;
+    const r = h.grab ? 11 : 17;
+    ctx.save(); ctx.translate(h.x, h.y); ctx.lineWidth = 3;
+    ctx.strokeStyle = h.item ? '#2de2c5' : h.grab ? '#ff3b7a' : 'rgba(255,214,150,.95)'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+    if (h.grab) { ctx.fillStyle = h.item ? 'rgba(45,226,197,.4)' : 'rgba(255,59,122,.5)'; ctx.fill(); }
+    if (h.dwellT > 0.05) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, r + 7, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, h.dwellT)); ctx.stroke(); }
+    ctx.restore();
+  }
+}
+
+/* ---- HUD ---- */
+function clockStr() {
+  let total = 21 * 60 + Math.min(300, S.t / SHIFT_LEN * 300); total %= 24 * 60;
+  const h = Math.floor(total / 60), m = Math.floor(total % 60);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+function drawHUD() {
+  ctx.save();
+  const g = ctx.createLinearGradient(0, 0, 0, 56); g.addColorStop(0, 'rgba(10,4,3,.94)'); g.addColorStop(1, 'rgba(10,4,3,.68)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, 56);
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(0, 56, W, 2);
+  text('LAST CALL', 18, 40, { font: `400 30px ${F_DISP}`, color: '#ffe9f1', shadow: '#ff3b7a', sb: 14 });
+  text('AR', 138, 40, { font: `400 19px ${F_DISP}`, color: '#dffcf6', shadow: '#2de2c5', sb: 12 });
+  text(clockStr(), 192, 31, { font: `400 27px ${F_DISP}`, color: '#ffe3a6' });
+  const frac = clamp(S.t / SHIFT_LEN, 0, 1); ctx.fillStyle = 'rgba(255,255,255,.14)'; rr(192, 40, 110, 6, 3); ctx.fill();
+  ctx.fillStyle = '#ffb347'; rr(192, 40, Math.max(6, 110 * frac), 6, 3); ctx.fill();
+  ctx.fillStyle = '#ff5c8f'; ctx.fillRect(192 + 110 * (LAST_CALL_AT / SHIFT_LEN) - 1, 37, 2, 12);
+  // hand status
+  if (inputMode === 'cam') {
+    const n = hands.filter(h => h.active).length;
+    ctx.fillStyle = n ? '#5ae08a' : '#ff6a5c'; ctx.beginPath(); ctx.arc(332, 28, 5, 0, TAU); ctx.fill();
+    text(n ? `${n} hand${n > 1 ? 's' : ''} tracked · ${Math.round(diag.fps)} fps` : (engine ? 'No hand — hold one up, palm to camera' : 'Starting tracker…'), 344, 33, { font: `600 16px ${F_BODY}`, color: n ? '#cfeedd' : '#ffb4aa' });
+  } else text('Mouse mode: click & drag = pinch', 332, 33, { font: `600 16px ${F_BODY}`, color: '#cfd8e0' });
+  // tips
+  ctx.fillStyle = '#e9b83a'; ctx.beginPath(); ctx.arc(612, 28, 14, 0, TAU); ctx.fill(); ctx.strokeStyle = '#8a6410'; ctx.lineWidth = 2; ctx.stroke();
+  text('$', 612, 34, { font: `700 18px ${F_BODY}`, color: '#6a4a08', align: 'center' });
+  text(String(Math.round(S.tipsShown)), 634, 39, { font: `400 36px ${F_DISP}`, color: '#fff2c4' });
+  text('TIPS', 634 + 6 + ctx.measureText(String(Math.round(S.tipsShown))).width + 4, 38, { font: `600 14px ${F_BODY}`, color: 'rgba(255,230,170,.6)' });
+  // stars
+  const avg = S.ratings.length ? mean(S.ratings) : 0;
+  for (let i = 0; i < 5; i++) drawStar(800 + i * 27, 28, 11, clamp(avg - i, 0, 1));
+  text(S.ratings.length ? avg.toFixed(1) : '—', 940, 36, { font: `400 26px ${F_DISP}`, color: '#ffe9a0' });
+  text(`${Math.round(satisfaction())}% happy`, 984, 35, { font: `600 17px ${F_BODY}`, color: satisfaction() > 70 ? '#aef0c0' : satisfaction() > 45 ? '#ffe9a0' : '#ffa090' });
+  // buttons
+  for (const id of ['bottle', 'mute', 'pause']) {
+    if (id === 'bottle' && inputMode !== 'cam') continue;
+    const r = UI[id], hov = anyHover(id) || false; ctx.fillStyle = hov ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.1)'; rr(r.x, r.y, r.w, r.h, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(217,178,90,.6)'; ctx.lineWidth = 1.5; rr(r.x, r.y, r.w, r.h, 8); ctx.stroke();
+    text(id === 'pause' ? '❚❚' : id === 'bottle' ? '🧴' : (muted ? '🔇' : '🔊'), r.x + r.w / 2, r.y + 25, { font: '17px sans-serif', color: '#ffe9c4', align: 'center' });
+    if (id === 'bottle') { ctx.fillStyle = BT.locked ? (BT.tracking ? '#5ae08a' : '#ffd27a') : '#7a6a60'; ctx.beginPath(); ctx.arc(r.x + r.w - 7, r.y + 8, 4.5, 0, TAU); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function drawMeter() {
+  if (mode !== 'play') return;
+  const x = 440, y = 681, w = 400, h = 14, cfg = mixInfo.method === 'stir' ? STIR : SHAKE, a = mixInfo.active;
+  ctx.save(); ctx.globalAlpha = a ? 1 : 0.42;
+  ctx.fillStyle = 'rgba(8,4,3,.62)'; rr(x - 12, y - 24, w + 24, 52, 10); ctx.fill();
+  text(a ? (mixInfo.method === 'shake' ? 'SHAKING' : 'STIRRING') : 'FINESSE', x, y - 8, { font: `400 19px ${F_DISP}`, color: '#ffe3a6' });
+  const zone = { idle: '', still: 'keep moving', low: 'faster', good: 'perfect', hot: 'easy!' }[mixInfo.zone];
+  text(zone, x + w, y - 8, { font: `700 16px ${F_BODY}`, color: mixInfo.zone === 'good' ? '#7af0a0' : mixInfo.zone === 'hot' ? '#ff7a6a' : '#9fc8ff', align: 'right' });
+  const zl = cfg.lo * w, zh = cfg.hi * w;
+  ctx.fillStyle = '#3a6ea5'; rr(x, y, zl, h, 4); ctx.fill();
+  ctx.fillStyle = '#35b86a'; ctx.fillRect(x + zl, y, zh - zl, h);
+  ctx.fillStyle = '#d8453b'; rr(x + zh, y, w - zh, h, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5; rr(x, y, w, h, 4); ctx.stroke();
+  const nx = x + clamp(mixInfo.meter, 0, 1) * w; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(nx, y - 5); ctx.lineTo(nx - 6, y - 12); ctx.lineTo(nx + 6, y - 12); ctx.closePath(); ctx.fill(); ctx.fillRect(nx - 1.5, y - 4, 3, h + 8);
+  ctx.fillStyle = 'rgba(255,255,255,.14)'; rr(x, y + h + 5, w, 6, 3); ctx.fill();
+  ctx.fillStyle = vessel.mixed ? '#7af0c8' : '#ffb347'; rr(x, y + h + 5, Math.max(6, w * vessel.progress), 6, 3); ctx.fill();
+  ctx.restore();
+}
+function hintText() {
+  if (mode !== 'play') return '';
+  const waiting = S.customers.some(c => c.state === 'waiting' && c.order), v = vessel;
+  if (towel.held) return S.aim && S.aim.dis ? 'Flick the towel hard toward the red target!' : 'Flick the towel at a troublemaker (red target)';
+  if (S.customers.some(isDisruptive) && !items.some(it => it.held && it !== towel)) return 'Trouble at the bar! Grab the towel and FLICK it at them, or call the bouncer';
+  if (glass.held && glass.drink) return 'Hold the drink over a customer for a moment (or let go over them)';
+  if (glass.drink) return waiting ? 'Pick up the drink and carry it to a customer' : 'Hold the drink — someone will order soon';
+  if (v.mixed) return v.held ? 'Mixed! Carry the glass into the dashed zone over the cocktail glass' : 'Mixed! Grab the mixing glass and carry it to the cocktail glass';
+  if (v.total > 0) {
+    if (v.progress > 0.04) return 'Keep going — stay in the green zone';
+    return spoon.held ? 'Stir smooth circles with the spoon over the mixing glass' : (BT.locked ? 'SHAKE your real bottle (or the mixing glass), or STIR with the spoon' : 'SHAKE the mixing glass (grab it), or STIR with the bar spoon');
+  }
+  if (waiting) return 'Read the order, check the menu, then tip a bottle over the mixing glass';
+  return 'Quiet moment... wipe something down';
+}
+function drawZone(cx, cy, rx, ry, label, active, below) {
+  ctx.save(); const p = 0.5 + 0.5 * Math.sin(T * 4);
+  ctx.setLineDash([10, 8]); ctx.lineDashOffset = -T * 24; ctx.lineWidth = active ? 4 : 3;
+  ctx.strokeStyle = active ? 'rgba(122,240,160,.95)' : `rgba(255,226,150,${0.5 + 0.35 * p})`; ctx.fillStyle = active ? 'rgba(122,240,160,.10)' : 'rgba(255,226,150,.06)';
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  text(label, cx, below ? cy + ry + 22 : cy - ry - 8, { font: `700 17px ${F_BODY}`, color: active ? '#aaf5c4' : '#ffe9a0', align: 'center', stroke: 'rgba(0,0,0,.7)' });
+  ctx.restore();
+}
+function drawGuides() {
+  if (mode !== 'play') return; const v = vessel;
+  if (bottles.some(b => b.held) && !v.mixed && v.total < VESSEL_CAP) drawZone(v.x, v.y - 105, 150, 62, 'POUR HERE', bottles.some(b => b.pouring));
+  if (spoon.held && v.total > 0 && !v.held) drawZone(v.x, v.y - 110, 140, 120, v.stirZone ? 'STIR IN CIRCLES' : 'STIR HERE', v.stirZone);
+  if (v.held && v.total > 0 && !glass.drink) drawZone(glass.x, glass.y - 138, 190, 132, 'POUR INTO THE COCKTAIL GLASS', v.pourOut > 0.02);
+  if (glass.held && glass.drink) {
+    for (const c of S.customers) if (c.state === 'waiting' && c.order) drawZone(c.x, 452, 125, 112, 'SERVE', S.serveT.c === c, true);
+    if (S.serveT.c) { ctx.save(); ctx.strokeStyle = '#7af0a0'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(glass.x, glass.y - 20, 62, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(S.serveT.t / 0.8, 0, 1)); ctx.stroke(); ctx.restore(); }
+  }
+}
+function drawMixFeedback() {
+  const v = vessel; if (mode !== 'play' || v.gone || !mixInfo.active) return;
+  const col = { good: '#7af0a0', hot: '#ff7a6a', low: '#9fc8ff', still: '#ffe9a0' }[mixInfo.zone] || '#fff';
+  const msg = v.mixed ? 'DONE — now pour it out' : { good: 'Perfect!', hot: 'Easy, easy!', low: 'Faster!', still: mixInfo.method === 'shake' ? 'Shake it!' : 'Stir in circles!' }[mixInfo.zone];
+  const cx = v.x, cy = v.y - 8, r = 82;
+  ctx.save(); ctx.lineWidth = 8; ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = v.mixed ? '#7af0c8' : col; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0.01, v.progress)); ctx.stroke();
+  text(msg, cx, cy + r + 28, { font: `700 22px ${F_BODY}`, color: v.mixed ? '#7af0c8' : col, align: 'center', stroke: 'rgba(0,0,0,.75)', sw: 5 });
+  ctx.restore();
+}
+function drawHint() {
+  const t = hintText(); if (!t) return;
+  ctx.font = `600 18px ${F_BODY}`; const w = ctx.measureText(t).width + 36;
+  ctx.fillStyle = 'rgba(8,4,3,.55)'; rr(W / 2 - w / 2 - 20, 639, w, 24, 12); ctx.fill();
+  text(t, W / 2 - 20, 657, { font: `600 18px ${F_BODY}`, color: '#ffe9c4', align: 'center' });
+}
+function drawBanner() {
+  if (inputMode === 'cam' && mode === 'play' && !S.banner && clock() - diag.lastHandsT > 6) {
+    const t = "Can't see your hand — palm toward the camera, 40–70 cm away, light on your hand";
+    ctx.save(); ctx.font = `600 19px ${F_BODY}`; const w = ctx.measureText(t).width + 40;
+    ctx.fillStyle = 'rgba(12,5,4,.86)'; rr(W / 2 - w / 2, 70, w, 34, 17); ctx.fill(); ctx.strokeStyle = '#ff9a8a'; ctx.lineWidth = 2; rr(W / 2 - w / 2, 70, w, 34, 17); ctx.stroke();
+    text(t, W / 2, 93, { font: `600 19px ${F_BODY}`, color: '#ffc4b8', align: 'center' }); ctx.restore();
+  }
+  const b = S.banner; if (!b) return;
+  const k = b.t / b.life, slide = Math.min(1, b.t / 0.3), fade = k > 0.85 ? 1 - (k - 0.85) / 0.15 : 1;
+  ctx.save(); ctx.globalAlpha = fade; ctx.font = `400 28px ${F_DISP}`; const w = ctx.measureText(b.text).width + 60, y = lerp(66, 100, slide);
+  ctx.fillStyle = 'rgba(12,5,4,.86)'; rr(W / 2 - w / 2, y - 24, w, 44, 22); ctx.fill(); ctx.strokeStyle = b.color; ctx.lineWidth = 2.5; rr(W / 2 - w / 2, y - 24, w, 44, 22); ctx.stroke();
+  text(b.text, W / 2, y + 7, { font: `400 28px ${F_DISP}`, color: b.color, align: 'center' });
+  ctx.restore();
+}
+function drawVignette() {
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.7); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,214,150,.3)'; ctx.lineWidth = 3; const m = 10, L = 30;
+  for (const [x, y, sx, sy] of [[m, m + 56, 1, 1], [W - m, m + 56, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { ctx.beginPath(); ctx.moveTo(x, y + sy * L); ctx.lineTo(x, y); ctx.lineTo(x + sx * L, y); ctx.stroke(); }
+}
+
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#050203'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, offX * dpr, offY * dpr);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  if (S.shake > 0) ctx.translate((Math.random() - 0.5) * S.shake * 18, (Math.random() - 0.5) * S.shake * 18);
+  drawBackground(); drawBackBar();
+  for (const b of bottles) if (!b.held) drawBottle(b);
+  drawMenuBoard();
+  S.customers.forEach(drawCustomer); drawBouncer(); S.customers.forEach(drawBubble);
+  drawCounter();
+  for (const it of items) if (!it.held && !it.gone && it.kind !== 'bottle') { shadowFor(it); drawItem(it); }
+  drawServedGlasses(); drawGuides();
+  for (const it of items) if (it.held) drawItem(it);
+  drawMixFeedback(); drawTowelAim(); drawBottleOverlay();
+  drawStreams(); drawProj(); drawFx(); drawVignette();
+  drawHands(); drawHUD(); drawMeter(); drawHint(); drawBanner();
+  ctx.restore();
+}
+
+/* =====================================================================
+   BOOT
+===================================================================== */
+let quality = 1, emaDt = 1 / 60, slow = 0;       // render quality drops automatically if the machine can't keep up
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 1.5) * quality;
+  cv.width = Math.max(320, Math.floor(innerWidth * dpr)); cv.height = Math.max(200, Math.floor(innerHeight * dpr));
+  cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  scale = Math.min(innerWidth / W, innerHeight / H); offX = (innerWidth - W * scale) / 2; offY = (innerHeight - H * scale) / 2;
+}
+window.addEventListener('resize', resize); resize();
+
+let last = performance.now();
+function frame(now) {
+  const raw = (now - last) / 1000, dt = Math.min(0.05, Math.max(0.001, raw)); last = now;
+  emaDt += (Math.min(raw, 0.1) - emaDt) * 0.05;
+  if (mode === 'play' && emaDt > 0.027) { if (++slow > 150 && quality > 0.55) { quality = Math.max(0.55, quality * 0.8); slow = 0; resize(); } } else slow = Math.max(0, slow - 2);
+  try { update(dt); render(); } catch (e) { console.error(e); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (document.fonts && document.fonts.load) { document.fonts.load(`400 20px "Bebas Neue"`); document.fonts.load(`600 16px "Barlow Condensed"`); }
+})();
+</script>
+</body>
+</html>
